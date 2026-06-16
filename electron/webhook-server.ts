@@ -13,10 +13,76 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// 2. استقبال webhook الواتساب من Twilio / Infobip
+// التحقق من الـ Webhook الخاص بـ Meta/WhatsApp Cloud API
+app.get('/webhook/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'basira_crm_token';
+
+  if (mode && token) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('✅ تم التحقق من الـ Webhook الخاص بـ Meta بنجاح!');
+      return res.status(200).send(challenge);
+    } else {
+      return res.status(403).send('Forbidden');
+    }
+  }
+  return res.status(400).send('Bad Request');
+});
+
+// 2. استقبال webhook الواتساب من Twilio / Infobip / Meta
 app.post('/webhook/whatsapp', async (req, res) => {
   try {
-    // التحقق من نوع الويب هوك (Infobip يحتوي على مصفوفة results)
+    // 1. التحقق من نوع الويب هوك الخاص بـ Meta WhatsApp Cloud API
+    if (req.body.object === 'whatsapp_business_account') {
+      const entry = req.body.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+      const message = value?.messages?.[0];
+
+      if (message) {
+        const fromNum = message.from || '';
+        const toNum = value.metadata?.display_phone_number || '';
+        const bodyText = message.text?.body || '';
+        const msgSid = message.id || `META_${Date.now()}`;
+
+        if (fromNum && bodyText) {
+          const from = `whatsapp:+${fromNum.replace('+', '').trim()}`;
+          const to = `whatsapp:+${toNum.replace('+', '').trim()}`;
+
+          console.log(`📥 رسالة واردة من Meta Cloud API: ${from} | المحتوى: ${bodyText}`);
+
+          const payload = {
+            from,
+            to,
+            body: bodyText,
+            sid: msgSid,
+          };
+
+          try {
+            const forwardRes = await fetch('http://localhost:3002/incoming', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (!forwardRes.ok) {
+              console.error(`❌ فشل تمرير رسالة Meta لـ Electron: ${forwardRes.statusText}`);
+            } else {
+              console.log('✅ تم تمرير رسالة Meta بنجاح إلى Electron');
+            }
+          } catch (err) {
+            console.error('⚠️ Electron غير متصل حالياً. تم تجاهل التوجيه الفوري لرسالة Meta.');
+          }
+        }
+      }
+
+      return res.status(200).json({ success: true });
+    }
+
+    // 2. التحقق من نوع الويب هوك الخاص بـ Infobip
     if (req.body.results && Array.isArray(req.body.results)) {
       console.log(`📥 ويب هوك Infobip وارد: ${req.body.results.length} رسالة`);
 

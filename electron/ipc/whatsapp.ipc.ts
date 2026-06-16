@@ -287,6 +287,38 @@ export function setupWhatsAppIPC(store: Store) {
         const resJson: any = await response.json();
         messageId = resJson.messages?.[0]?.messageId || 'INFOBIP_' + Date.now();
         statusStr = 'delivered';
+      } else if (provider && (provider.type === 'whatsapp_cloud' || provider.type === 'meta')) {
+        const cleanPhone = to.replace('whatsapp:', '').replace('+', '').trim();
+        const accessToken = provider.api_key.replace(/[”"']/g, '').trim();
+        const phoneNumberId = provider.phone_number.replace(/[”"']/g, '').trim();
+        const apiUrl = provider.api_url ? provider.api_url.replace(/[”"']/g, '').trim() : 'https://graph.facebook.com/v20.0';
+
+        const response = await fetch(`${apiUrl}/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: "text",
+            text: {
+              preview_url: false,
+              body: body
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`فشل الإرسال عبر WhatsApp Cloud API: ${errText || response.statusText}`);
+        }
+
+        const resJson: any = await response.json();
+        messageId = resJson.messages?.[0]?.id || 'META_' + Date.now();
+        statusStr = 'delivered';
       } else {
         const { client, fromNumber } = getTwilioClient();
         // تأكد من صيغة الرقم المستهدف
