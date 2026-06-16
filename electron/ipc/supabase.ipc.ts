@@ -55,7 +55,13 @@ export function setupSupabaseIPC(store: Store) {
 
       let query = client
         .from('customers')
-        .select('*')
+        .select(`
+          *,
+          invoices (
+            final_total,
+            status
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (filters?.search) {

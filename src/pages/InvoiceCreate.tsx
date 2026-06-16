@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, FileText, Printer, Search, Loader2, PlusCircle, CheckCircle2, AlertTriangle, FileDown, RefreshCw } from 'lucide-react';
+import { Save, FileText, Printer, Search, Loader2, PlusCircle, CheckCircle2, AlertTriangle, FileDown, RefreshCw, Pencil } from 'lucide-react';
 import { useInvoiceStore } from '../store/useInvoiceStore';
 import { validateInvoice, formatCurrency } from '../lib/invoiceCalculations';
 import CustomerSelector from '../components/invoice/CustomerSelector';
@@ -7,6 +7,7 @@ import InvoiceItemsTable from '../components/invoice/InvoiceItemsTable';
 import InvoiceTotals from '../components/invoice/InvoiceTotals';
 import InvoiceSearchModal from '../components/invoice/InvoiceSearchModal';
 import InvoicePreviewModal from '../components/invoice/InvoicePreviewModal';
+import InvoiceEdit from './InvoiceEdit';
 
 export default function InvoiceCreate() {
   const { 
@@ -23,6 +24,7 @@ export default function InvoiceCreate() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [savedInvoiceId, setSavedInvoiceId] = useState<number | null>(null);
   const [nextInvoiceId, setNextInvoiceId] = useState<number | null>(null);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<number | null>(null);
   
   // Modals state
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -175,6 +177,18 @@ export default function InvoiceCreate() {
     setSuccessMsg(null);
     fetchNextInvoiceId();
   };
+
+  if (editingInvoiceId !== null) {
+    return (
+      <InvoiceEdit
+        invoiceId={editingInvoiceId}
+        onBack={() => {
+          setEditingInvoiceId(null);
+          handleSelectInvoiceSearch(editingInvoiceId);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="p-8 bg-slate-950 min-h-screen text-slate-100 space-y-6" dir="rtl">
@@ -338,6 +352,15 @@ export default function InvoiceCreate() {
                   تصدير PDF
                 </button>
               </div>
+
+              <button
+                disabled={!isExistingInvoice}
+                onClick={() => setEditingInvoiceId(savedInvoiceId)}
+                className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-550 text-white py-2.5 px-4 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-amber-600/5 mt-2"
+              >
+                <Pencil className="w-4 h-4" />
+                تعديل الفاتورة المحفوظة
+              </button>
             </div>
 
             {/* Hint for saving */}

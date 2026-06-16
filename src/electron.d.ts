@@ -24,7 +24,8 @@ export interface IElectronAPI {
   invoice: {
     searchCustomer: (query: string) => Promise<any>;
     create: (draft: any) => Promise<any>;
-    update: (payload: { invoiceId: number; status: string; notes?: string }) => Promise<any>;
+    update: (payload: any) => Promise<any>;
+    cancel: (invoiceId: number, reason?: string) => Promise<any>;
     getById: (invoiceId: number) => Promise<any>;
     search: (query: string) => Promise<any>;
     generatePdf: (invoiceData: any) => Promise<any>;
@@ -32,6 +33,7 @@ export interface IElectronAPI {
     searchProducts: (query: string) => Promise<any>;
     getProductVariants: (productName: string) => Promise<any>;
     getNextId: () => Promise<any>;
+    getShippingRates: () => Promise<any>;
   };
 }
 

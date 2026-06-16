@@ -166,12 +166,161 @@ export function setupInvoiceIPC(store: Store) {
   // ═══════════════════════════════════════════
   // ✅ تحديث حالة وملاحظات الفاتورة (UPDATE فقط)
   // ═══════════════════════════════════════════
-  ipcMain.handle('invoice:update', async (_, { invoiceId, status, notes }) => {
+  // ═══════════════════════════════════════════
+  // ✅ تحديث فاتورة (UPDATE محكوم + INSERT/DELETE للبنود + دعم التوافقية الرجعية)
+  // ═══════════════════════════════════════════
+  ipcMain.handle('invoice:update', async (_, payload: any) => {
     try {
+      const client = getClient();
+
+      // التحقق من توافقية البايلود القديم { invoiceId, status, notes }
+      if (payload && 'invoiceId' in payload && !('invoice_id' in payload)) {
+        const { invoiceId, status, notes } = payload;
+        if (!invoiceId || typeof invoiceId !== 'number') {
+          return { success: false, error: 'رقم الفاتورة غير صالح' };
+        }
+        const { error } = await client
+          .from('invoices')
+          .update({ status, notes })
+          .eq('invoice_id', invoiceId);
+
+        if (error) throw error;
+        return { success: true };
+      }
+
+      // التحقق الصارم من البايلود الجديد
+      if (!payload || !payload.invoice_id || typeof payload.invoice_id !== 'number') {
+        return { success: false, error: 'رقم الفاتورة غير صالح — تم رفض العملية' };
+      }
+
+      const results: { step: string; error?: string }[] = [];
+
+      // الخطوة 1: حذف البنود المحددة (DELETE بـ item_id محدد فقط)
+      if (payload.itemIdsToDelete && payload.itemIdsToDelete.length > 0) {
+        const { error: deleteError } = await client
+          .from('invoice_items')
+          .delete()
+          .in('item_id', payload.itemIdsToDelete)
+          .eq('invoice_id', payload.invoice_id); // ⚠️ حماية إضافية — البند يجب أن ينتمي لهذه الفاتورة
+
+        if (deleteError) {
+          results.push({ step: 'حذف البنود', error: deleteError.message });
+        }
+      }
+
+      // الخطوة 2: تحديث البنود المعدّلة (UPDATE واحد لكل بند، بـ item_id محدد)
+      if (payload.itemsToUpdate && payload.itemsToUpdate.length > 0) {
+        for (const item of payload.itemsToUpdate) {
+          const { error: updateError } = await client
+            .from('invoice_items')
+            .update({
+              product_name: item.product_name,
+              variant_name: item.variant_name,
+              quantity: item.quantity,
+              sub_total: item.sub_total,
+              details: item.details,
+            })
+            .eq('item_id', item.item_id)
+            .eq('invoice_id', payload.invoice_id); // ⚠️ حماية إضافية
+
+          if (updateError) {
+            results.push({ step: `تحديث البند ${item.item_id}`, error: updateError.message });
+          }
+        }
+      }
+
+      // الخطوة 3: إدراج البنود الجديدة (INSERT)
+      if (payload.itemsToCreate && payload.itemsToCreate.length > 0) {
+        const { error: insertError } = await client
+          .from('invoice_items')
+          .insert(
+            payload.itemsToCreate.map((item: any) => ({
+              invoice_id: payload.invoice_id,
+              product_name: item.product_name,
+              variant_name: item.variant_name,
+              quantity: item.quantity,
+              sub_total: item.sub_total,
+              details: item.details,
+            }))
+          );
+
+        if (insertError) {
+          results.push({ step: 'إضافة بنود جديدة', error: insertError.message });
+        }
+      }
+
+      // إذا فشلت أي خطوة من خطوات البنود، أبلغ المستخدم قبل تحديث الفاتورة الرئيسية
+      const failedSteps = results.filter((r) => r.error);
+      if (failedSteps.length > 0) {
+        return {
+          success: false,
+          error: `فشلت بعض العمليات: ${failedSteps.map((s) => `${s.step} (${s.error})`).join(' | ')}`,
+          partialFailure: true,
+        };
+      }
+
+      // الخطوة 4: تحديث الفاتورة الرئيسية (UPDATE بـ invoice_id محدد فقط)
+      const { error: invoiceUpdateError } = await client
+        .from('invoices')
+        .update({
+          customer_phone: payload.customer_phone,
+          customer_phone_2: payload.customer_phone_2,
+          customer_address: payload.customer_address,
+          discount_amount: payload.discount_amount,
+          shipping_cost: payload.shipping_cost,
+          sub_total: payload.sub_total,
+          final_total: payload.final_total,
+          notes: payload.notes,
+          status: payload.status,
+        })
+        .eq('invoice_id', payload.invoice_id);
+
+      if (invoiceUpdateError) throw invoiceUpdateError;
+
+      // الخطوة 5 (اختيارية): مزامنة بيانات العميل الأصلي في customers
+      if (payload.syncCustomerProfile && payload.customer_id) {
+        const { error: customerUpdateError } = await client
+          .from('customers')
+          .update({
+            phone: payload.customer_phone,
+            customer_phone_2: payload.customer_phone_2,
+            address: payload.customer_address,
+          })
+          .eq('customer_id', payload.customer_id); // ⚠️ شرط محدد على customer_id
+
+        if (customerUpdateError) {
+          return {
+            success: true, // الفاتورة نفسها تحدّثت بنجاح
+            warning: `تم تحديث الفاتورة لكن فشلت مزامنة ملف العميل: ${customerUpdateError.message}`,
+          };
+        }
+      }
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل تحديث الفاتورة',
+      };
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // ✅ إلغاء فاتورة (UPDATE status فقط — لا حذف نهائي)
+  // ═══════════════════════════════════════════
+  ipcMain.handle('invoice:cancel', async (_, invoiceId: number, reason?: string) => {
+    try {
+      if (!invoiceId || typeof invoiceId !== 'number') {
+        return { success: false, error: 'رقم الفاتورة غير صالح' };
+      }
+
       const client = getClient();
       const { error } = await client
         .from('invoices')
-        .update({ status, notes })
+        .update({
+          status: 'ملغاة',
+          notes: reason ? `[ملغاة] ${reason}` : undefined,
+        })
         .eq('invoice_id', invoiceId);
 
       if (error) throw error;
@@ -179,7 +328,7 @@ export function setupInvoiceIPC(store: Store) {
     } catch (err) {
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'فشل تحديث الفاتورة',
+        error: err instanceof Error ? err.message : 'فشل إلغاء الفاتورة',
       };
     }
   });
@@ -378,6 +527,28 @@ export function setupInvoiceIPC(store: Store) {
         success: false,
         error: err instanceof Error ? err.message : 'فشل جلب رقم الفاتورة التالي',
         nextId: null,
+      };
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // ✅ جلب تسعيرات الشحن (SELECT من shipping_rates)
+  // ═══════════════════════════════════════════
+  ipcMain.handle('invoice:getShippingRates', async () => {
+    try {
+      const client = getClient();
+      const { data, error } = await client
+        .from('shipping_rates')
+        .select('id, region_name, rate')
+        .order('region_name', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل جلب تسعيرات الشحن',
+        data: []
       };
     }
   });

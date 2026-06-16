@@ -28,18 +28,21 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
       const res = await window.electronAPI.db.getContacts({ search });
       if (res.success) {
         // Map database schema values to Contact interface structure
-        const mappedContacts: Contact[] = res.data.map((c: any) => ({
-          id: c.customer_id,
-          name: c.name,
-          phone: c.phone,
-          address: c.address,
-          email: c.email || '',
-          customer_phone_2: c.customer_phone_2 || '',
-          purchaseCount: 0, // calculated during RFM
-          totalSpend: 0,    // calculated during RFM
-          createdAt: c.created_at,
-          tags: []
-        }));
+        const mappedContacts: Contact[] = res.data.map((c: any) => {
+          const activeInvoices = (c.invoices || []).filter((inv: any) => inv.status !== 'ملغاة');
+          return {
+            id: c.customer_id,
+            name: c.name,
+            phone: c.phone,
+            address: c.address,
+            email: c.email || '',
+            customer_phone_2: c.customer_phone_2 || '',
+            purchaseCount: activeInvoices.length,
+            totalSpend: activeInvoices.reduce((sum: number, inv: any) => sum + (inv.final_total || 0), 0),
+            createdAt: c.created_at,
+            tags: []
+          };
+        });
         set({ contacts: mappedContacts, isLoading: false });
       } else {
         set({ error: res.error || 'فشل تحميل جهات الاتصال', isLoading: false });

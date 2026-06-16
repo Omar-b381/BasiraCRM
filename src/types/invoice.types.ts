@@ -68,3 +68,64 @@ export interface PdfGenerationResult {
   filePath?: string;
   error?: string;
 }
+
+export interface InvoiceEditItem {
+  item_id: number | null;     // null = بند جديد لم يُحفظ بعد
+  tempId: string;             // معرف مؤقت في الواجهة (uuid)
+  product_name: string;
+  variant_name: string;
+  quantity: number;
+  unit_price: number;         // مُستنتج من sub_total/quantity عند التحميل
+  sub_total: number;
+  details: string;
+  _action: 'unchanged' | 'updated' | 'new' | 'deleted'; // ⚠️ حالة محلية فقط، لا تُحفظ في DB
+}
+
+export interface InvoiceEditState {
+  invoice_id: number;
+  customer_id: string | null;
+  customer_name: string;        // 🔒 غير قابل للتعديل في هذه الشاشة
+  customer_phone: string;       // ✅ قابل للتعديل
+  customer_phone_2: string;     // ✅ قابل للتعديل (إضافة رقم ثانٍ)
+  customer_address: string;     // ✅ قابل للتعديل
+  invoice_date: string;         // 🔒 غير قابل للتعديل (إلا بحالة استثنائية)
+  items: InvoiceEditItem[];
+  discount_amount: number;
+  shipping_cost: number;
+  sub_total: number;            // محسوب تلقائياً من items
+  final_total: number;          // محسوب تلقائياً
+  status: string;
+  notes: string;
+  syncCustomerProfile: boolean; // checkbox: تحديث جدول customers أيضاً
+}
+
+export interface InvoiceUpdatePayload {
+  invoice_id: number;
+  customer_phone: string;
+  customer_phone_2: string | null;
+  customer_address: string | null;
+  discount_amount: number;
+  shipping_cost: number;
+  sub_total: number;
+  final_total: number;
+  notes: string | null;
+  status: string;
+  syncCustomerProfile: boolean;
+  customer_id: string | null;
+  itemsToCreate: Array<{
+    product_name: string;
+    variant_name: string;
+    quantity: number;
+    sub_total: number;
+    details: string | null;
+  }>;
+  itemsToUpdate: Array<{
+    item_id: number;
+    product_name: string;
+    variant_name: string;
+    quantity: number;
+    sub_total: number;
+    details: string | null;
+  }>;
+  itemIdsToDelete: number[];
+}

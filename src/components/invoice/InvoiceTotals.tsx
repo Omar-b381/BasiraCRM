@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useInvoiceStore } from '../../store/useInvoiceStore';
 import { formatCurrency } from '../../lib/invoiceCalculations';
 
@@ -11,12 +11,74 @@ const STATUS_OPTIONS = [
   'مرتجعة',
 ];
 
+interface ShippingRate {
+  id: number;
+  region_name: string;
+  rate: number;
+}
+
 export default function InvoiceTotals() {
   const { draft, setDiscount, setShipping, setNotes, setStatus } = useInvoiceStore();
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState<string>('');
+
+  useEffect(() => {
+    const loadRates = async () => {
+      try {
+        const res = await window.electronAPI.invoice.getShippingRates();
+        if (res.success) {
+          setShippingRates(res.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadRates();
+  }, []);
+
+  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedRegionId(val);
+    if (val === '') {
+      return;
+    }
+    const rateObj = shippingRates.find((r) => String(r.id) === val);
+    if (rateObj) {
+      setShipping(rateObj.rate);
+    }
+  };
+
+  // Sync selectedRegionId if shipping_cost is changed manually
+  useEffect(() => {
+    if (shippingRates.length === 0) return;
+    const matched = shippingRates.find((r) => r.rate === draft.shipping_cost);
+    if (matched) {
+      setSelectedRegionId(String(matched.id));
+    } else {
+      setSelectedRegionId('');
+    }
+  }, [draft.shipping_cost, shippingRates]);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
       <h3 className="text-white font-semibold">الإجماليات والحالة</h3>
+
+      {/* Shipping Region Dropdown */}
+      <div>
+        <label className="block text-sm text-slate-400 mb-1.5">تسعيرة شحن المنطقة</label>
+        <select
+          value={selectedRegionId}
+          onChange={handleRegionChange}
+          className="w-full bg-slate-950 text-white rounded-lg px-4 py-2.5 text-sm outline-none border border-slate-800 focus:border-indigo-500 cursor-pointer"
+        >
+          <option value="">-- شحن يدوي / مخصص --</option>
+          {shippingRates.map((r) => (
+            <option key={r.id} value={r.id} className="bg-slate-900 text-white">
+              {r.region_name} ({r.rate} ج.م)
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
