@@ -158,8 +158,26 @@ export function setupWhatsAppIPC(store: Store) {
       });
   };
 
-  // دالة مساعدة للحصول على عميل Twilio المحدث
-  const getTwilioClient = () => {
+  // دالة مساعدة للحصول على عميل Twilio المحدث من قاعدة البيانات أو التخزين المحلي
+  const getTwilioClient = async (supabase: SupabaseClient) => {
+    try {
+      const { data: provider } = await supabase
+        .from('whatsapp_providers')
+        .select('*')
+        .eq('type', 'twilio')
+        .limit(1)
+        .maybeSingle();
+
+      if (provider && provider.api_key && provider.api_url) {
+        return {
+          client: Twilio(provider.api_url.replace(/[”"']/g, '').trim(), provider.api_key.replace(/[”"']/g, '').trim()),
+          fromNumber: provider.phone_number || 'whatsapp:+14155238886',
+        };
+      }
+    } catch (err) {
+      console.error('Error fetching Twilio config from Supabase, falling back to store:', err);
+    }
+
     const settings = store.get('apiSettings') as { twilio?: TwilioConfig };
     const twilio = settings?.twilio;
 
@@ -204,25 +222,24 @@ export function setupWhatsAppIPC(store: Store) {
       customerId = newCust.customer_id;
     }
 
-    // 2. الحصول على مزود الخدمة النشط
-    const { data: provider } = await supabase
-      .from('whatsapp_providers')
-      .select('id')
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
-      
-    const providerId = provider?.id || 2; // الافتراضي 2 (Infobip أو المتاح)
-
-    // 3. البحث عن المحادثة
+    // 2. البحث عن المحادثة
     let { data: conversation } = await supabase
       .from('conversations')
       .select('id')
       .eq('customer_id', customerId)
-      .eq('provider_id', providerId)
       .maybeSingle();
 
     if (!conversation) {
+      // الحصول على معرف Twilio من قاعدة البيانات
+      const { data: provider } = await supabase
+        .from('whatsapp_providers')
+        .select('id')
+        .eq('type', 'twilio')
+        .limit(1)
+        .maybeSingle();
+
+      const providerId = provider?.id || null;
+
       // إدراج محادثة جديدة
       const { data: newConv, error: convError } = await supabase
         .from('conversations')
@@ -247,94 +264,19 @@ export function setupWhatsAppIPC(store: Store) {
     try {
       const supabase = getSupabaseClient();
 
-      // 1. الحصول على مزود الخدمة النشط من قاعدة البيانات
-      const { data: provider } = await supabase
-        .from('whatsapp_providers')
-        .select('*')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
+      const { client, fromNumber } = await getTwilioClient(supabase);
+      // تأكد من صيغة الرقم المستهدف
+      const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
 
-      let messageId = '';
-      let statusStr = 'sent';
+      // إرسال عبر Twilio
+      const twilioRes = await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body,
+      });
 
-      if (provider && provider.type === 'infobip') {
-        const cleanPhone = to.replace('whatsapp:', '').replace('+', '').trim();
-        const apiUrl = provider.api_url.replace(/[”"']/g, '').trim();
-        const apiKey = provider.api_key.replace(/[”"']/g, '').trim();
-        const fromPhone = provider.phone_number.replace(/[”"']/g, '').trim();
-
-        const response = await fetch(`https://${apiUrl}/whatsapp/1/message/text`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `App ${apiKey}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            from: fromPhone,
-            to: cleanPhone,
-            content: {
-              text: body
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`فشل الإرسال عبر Infobip: ${errText || response.statusText}`);
-        }
-
-        const resJson: any = await response.json();
-        messageId = resJson.messages?.[0]?.messageId || 'INFOBIP_' + Date.now();
-        statusStr = 'delivered';
-      } else if (provider && (provider.type === 'whatsapp_cloud' || provider.type === 'meta')) {
-        const cleanPhone = to.replace('whatsapp:', '').replace('+', '').trim();
-        const accessToken = provider.api_key.replace(/[”"']/g, '').trim();
-        const phoneNumberId = provider.phone_number.replace(/[”"']/g, '').trim();
-        const apiUrl = provider.api_url ? provider.api_url.replace(/[”"']/g, '').trim() : 'https://graph.facebook.com/v20.0';
-
-        const response = await fetch(`${apiUrl}/${phoneNumberId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: cleanPhone,
-            type: "text",
-            text: {
-              preview_url: false,
-              body: body
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`فشل الإرسال عبر WhatsApp Cloud API: ${errText || response.statusText}`);
-        }
-
-        const resJson: any = await response.json();
-        messageId = resJson.messages?.[0]?.id || 'META_' + Date.now();
-        statusStr = 'delivered';
-      } else {
-        const { client, fromNumber } = getTwilioClient();
-        // تأكد من صيغة الرقم المستهدف
-        const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-
-        // إرسال عبر Twilio
-        const twilioRes = await client.messages.create({
-          from: fromNumber,
-          to: toNumber,
-          body,
-        });
-
-        messageId = twilioRes.sid;
-        statusStr = twilioRes.status;
-      }
+      const messageId = twilioRes.sid;
+      const statusStr = twilioRes.status;
 
       // إدراج وحفظ في Supabase
       const { customerId, conversationId } = await ensureConversation(supabase, to);
@@ -361,6 +303,16 @@ export function setupWhatsAppIPC(store: Store) {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
 
+      // الحصول على معرف Twilio من قاعدة البيانات
+      const { data: provider } = await supabase
+        .from('whatsapp_providers')
+        .select('id')
+        .eq('type', 'twilio')
+        .limit(1)
+        .maybeSingle();
+
+      const providerId = provider?.id || null;
+
       // حفظ لوق الإشعار إذا كانت مرتبطة بطلب
       await supabase
         .from('notifications_log')
@@ -369,7 +321,7 @@ export function setupWhatsAppIPC(store: Store) {
           type: 'whatsapp',
           status: statusStr,
           sent_at: new Date().toISOString(),
-          provider_id: provider?.id || 2,
+          provider_id: providerId,
           message_content: body
         });
 

@@ -79,6 +79,7 @@ export function setupSupabaseIPC(store: Store) {
 
       return { success: true, data: data || [] };
     } catch (err) {
+      console.error('Error in db:getContacts handler:', err);
       return {
         success: false,
         error: err instanceof Error ? err.message : 'فشل جلب جهات الاتصال',

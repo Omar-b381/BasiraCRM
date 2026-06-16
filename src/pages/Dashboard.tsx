@@ -180,13 +180,13 @@ export default function Dashboard() {
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={segmentData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                  <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#9ca3af" fontSize={11} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} />
+                  <YAxis stroke="var(--text-tertiary)" fontSize={11} allowDecimals={false} axisLine={false} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#111827', borderColor: '#1f2937', borderRadius: '12px' }}
-                    labelStyle={{ color: '#ffffff', fontFamily: 'Cairo' }}
-                    itemStyle={{ color: '#818cf8', fontFamily: 'Cairo' }}
+                    contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderRadius: '12px' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Cairo' }}
+                    itemStyle={{ color: 'var(--text-secondary)', fontFamily: 'Cairo' }}
                   />
                   <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                     {segmentData.map((entry, index) => (

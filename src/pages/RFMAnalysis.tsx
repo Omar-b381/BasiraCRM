@@ -68,15 +68,15 @@ export default function RFMAnalysis() {
     setCampaignSuccess(null);
 
     try {
-      // 1. الحصول على مزود الخدمة النشط من الجدول
+      // 1. الحصول على معرّف مزود Twilio من قاعدة البيانات
       const { data: provider } = await supabase
         .from('whatsapp_providers')
         .select('id')
-        .eq('is_active', true)
+        .eq('type', 'twilio')
         .limit(1)
         .maybeSingle();
 
-      const providerId = provider?.id || 2;
+      const providerId = provider?.id || null;
 
       // 2. إدراج الحملة في جدول campaigns
       const { data: newCampaign, error: campError } = await supabase

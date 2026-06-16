@@ -40,10 +40,7 @@ export default function Settings() {
     activeEmployeeId: ''
   });
 
-  const [dbProviders, setDbProviders] = useState<any[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<any | null>(null);
-  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
-  const [isSavingProvider, setIsSavingProvider] = useState(false);
+
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -84,7 +81,6 @@ export default function Settings() {
       }
       setIsLoaded(true);
     });
-    loadProviders();
     loadDbTemplates();
   }, [fetchSettings]);
 
@@ -102,21 +98,7 @@ export default function Settings() {
     return () => clearTimeout(timer);
   }, [localSettings, employees, quickReplies, activeEmpId, saveSettings, isLoaded]);
 
-  const loadProviders = async () => {
-    setIsLoadingProviders(true);
-    try {
-      const res = await window.electronAPI.db.getProviders();
-      if (res.success) {
-        setDbProviders(res.data || []);
-        const active = res.data?.find((p: any) => p.is_active);
-        if (active) setSelectedProvider(active);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingProviders(false);
-    }
-  };
+
 
   const loadDbTemplates = async () => {
     setIsLoadingTemplates(true);
@@ -152,39 +134,7 @@ export default function Settings() {
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
-  const handleToggleProviderActive = async (provId: number) => {
-    const providerToUpdate = dbProviders.find(p => p.id === provId);
-    if (!providerToUpdate) return;
 
-    try {
-      const res = await window.electronAPI.db.saveProvider({
-        id: provId,
-        is_active: !providerToUpdate.is_active
-      });
-      if (res.success) {
-        showTemporarySuccess('تم تحديث حالة مزوّد الخدمة');
-        await loadProviders();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSaveProviderDetails = async () => {
-    if (!selectedProvider) return;
-    setIsSavingProvider(true);
-    try {
-      const res = await window.electronAPI.db.saveProvider(selectedProvider);
-      if (res.success) {
-        showTemporarySuccess('تم حفظ تفاصيل مزود الخدمة سحابياً');
-        await loadProviders();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSavingProvider(false);
-    }
-  };
 
   // ==========================================
   // دوال إدارة الموظفين
@@ -349,227 +299,141 @@ export default function Settings() {
       {/* 1. تبويب الخوادم والـ APIs */}
       {/* ======================================================= */}
       {activeTab === 'api' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            
-            {/* Supabase */}
-            <section className="glass rounded-3xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <Database className="w-5 h-5 text-indigo-400" />
-                  <h2 className="text-sm font-bold text-white">اتصال قاعدة البيانات — Supabase</h2>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => runTest('supabase', localSettings.supabase)}
-                  isLoading={tests.supabase?.status === 'testing'}
-                  icon={<RefreshCw className="w-3.5 h-3.5" />}
-                >
-                  فحص الاتصال
-                </Button>
+        <div className="max-w-4xl mx-auto space-y-6">
+          
+          {/* Supabase */}
+          <section className="glass rounded-3xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Database className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-sm font-bold text-white">اتصال قاعدة البيانات — Supabase</h2>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runTest('supabase', localSettings.supabase)}
+                isLoading={tests.supabase?.status === 'testing'}
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
+              >
+                فحص الاتصال
+              </Button>
+            </div>
 
-              {tests.supabase && (
-                <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
-                  tests.supabase.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
-                }`}>
-                  {tests.supabase.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-                  <span>{tests.supabase.message}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4">
-                <Input
-                  label="رابط المشروع (Project URL)"
-                  value={localSettings.supabase.url}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, supabase: { ...s.supabase, url: e.target.value } }))}
-                />
-                <Input
-                  label="المفتاح العام (Anon Key)"
-                  type="password"
-                  value={localSettings.supabase.anonKey}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, supabase: { ...s.supabase, anonKey: e.target.value } }))}
-                />
+            {tests.supabase && (
+              <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                tests.supabase.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
+              }`}>
+                {tests.supabase.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                <span>{tests.supabase.message}</span>
               </div>
-            </section>
-
-            {/* Twilio */}
-            <section className="glass rounded-3xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <MessageSquare className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-sm font-bold text-white">إعدادات Twilio API</h2>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => runTest('twilio', localSettings.twilio)}
-                  isLoading={tests.twilio?.status === 'testing'}
-                  icon={<RefreshCw className="w-3.5 h-3.5" />}
-                >
-                  فحص الاتصال
-                </Button>
-              </div>
-
-              {tests.twilio && (
-                <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
-                  tests.twilio.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
-                }`}>
-                  {tests.twilio.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-                  <span>{tests.twilio.message}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Account SID"
-                  value={localSettings.twilio.accountSid}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, accountSid: e.target.value } }))}
-                />
-                <Input
-                  label="Auth Token"
-                  type="password"
-                  value={localSettings.twilio.authToken}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, authToken: e.target.value } }))}
-                />
-                <div className="md:col-span-2">
-                  <Input
-                    label="رقم واتساب المرسل"
-                    value={localSettings.twilio.whatsappNumber}
-                    onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, whatsappNumber: e.target.value } }))}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Webhook */}
-            <section className="glass rounded-3xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <Laptop className="w-5 h-5 text-indigo-400" />
-                  <h2 className="text-sm font-bold text-white">خادم استقبال الويب هوك المحلي (Webhook)</h2>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => runTest('webhook')}
-                  isLoading={tests.webhook?.status === 'testing'}
-                  icon={<RefreshCw className="w-3.5 h-3.5" />}
-                >
-                  فحص الخادم
-                </Button>
-              </div>
-
-              {tests.webhook && (
-                <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
-                  tests.webhook.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
-                }`}>
-                  {tests.webhook.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-                  <span>{tests.webhook.message}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="المنفذ المحلى (Local Port)"
-                  value={String(localSettings.webhook.port)}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, webhook: { ...s.webhook, port: parseInt(e.target.value) || 3001 } }))}
-                />
-                <Input
-                  label="Webhook Secret"
-                  type="password"
-                  value={localSettings.webhook.secret}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, webhook: { ...s.webhook, secret: e.target.value } }))}
-                />
-              </div>
-            </section>
-
-          </div>
-
-          {/* مزودو واتساب السحابيون */}
-          <div className="space-y-6">
-            <section className="glass rounded-3xl p-6 space-y-4">
-              <div className="border-b border-gray-800/60 pb-3 flex items-center gap-2.5">
-                <Key className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-sm font-bold text-white">مزودو الواتساب السحابيون</h2>
-              </div>
-
-              {isLoadingProviders ? (
-                <div className="py-6 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {dbProviders.map((prov) => (
-                    <div
-                      key={prov.id}
-                      onClick={() => setSelectedProvider(prov)}
-                      className={`p-4 rounded-2xl border text-right cursor-pointer transition-all duration-200 ${
-                        selectedProvider?.id === prov.id
-                          ? 'bg-indigo-600/10 border-indigo-500/40 text-white shadow-lg shadow-indigo-600/5'
-                          : 'bg-gray-900/30 border-gray-800 hover:border-gray-700 text-gray-400'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-bold text-xs text-white">{prov.name}</h3>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleProviderActive(prov.id);
-                          }}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            prov.is_active
-                              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/20'
-                              : 'bg-gray-800 text-gray-500 border-gray-700'
-                          }`}
-                        >
-                          {prov.is_active ? 'نشط ومفعل' : 'غير نشط'}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-gray-500">النوع: {prov.type} | الرقم: {prov.phone_number || 'غير متوفر'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {selectedProvider && (
-              <section className="glass rounded-3xl p-6 space-y-4">
-                <div className="border-b border-gray-800/60 pb-3">
-                  <h3 className="text-xs font-bold text-white">تعديل مزود: {selectedProvider.name}</h3>
-                </div>
-                
-                <div className="space-y-3">
-                  <Input
-                    label="عنوان API"
-                    value={selectedProvider.api_url || ''}
-                    onChange={(e) => setSelectedProvider((p: any) => ({ ...p, api_url: e.target.value }))}
-                  />
-                  <Input
-                    label="مفتاح API"
-                    type="password"
-                    value={selectedProvider.api_key || ''}
-                    onChange={(e) => setSelectedProvider((p: any) => ({ ...p, api_key: e.target.value }))}
-                  />
-                  <Input
-                    label="رقم الهاتف (Phone)"
-                    value={selectedProvider.phone_number || ''}
-                    onChange={(e) => setSelectedProvider((p: any) => ({ ...p, phone_number: e.target.value }))}
-                  />
-                  
-                  <Button
-                    className="w-full mt-2"
-                    onClick={handleSaveProviderDetails}
-                    isLoading={isSavingProvider}
-                    size="sm"
-                  >
-                    تحديث بيانات المزود
-                  </Button>
-                </div>
-              </section>
             )}
-          </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <Input
+                label="رابط المشروع (Project URL)"
+                value={localSettings.supabase.url}
+                onChange={(e) => setLocalSettings(s => ({ ...s, supabase: { ...s.supabase, url: e.target.value } }))}
+              />
+              <Input
+                label="المفتاح العام (Anon Key)"
+                type="password"
+                value={localSettings.supabase.anonKey}
+                onChange={(e) => setLocalSettings(s => ({ ...s, supabase: { ...s.supabase, anonKey: e.target.value } }))}
+              />
+            </div>
+          </section>
+
+          {/* Twilio */}
+          <section className="glass rounded-3xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <MessageSquare className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-sm font-bold text-white">إعدادات Twilio API</h2>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runTest('twilio', localSettings.twilio)}
+                isLoading={tests.twilio?.status === 'testing'}
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
+              >
+                فحص الاتصال
+              </Button>
+            </div>
+
+            {tests.twilio && (
+              <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                tests.twilio.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
+              }`}>
+                {tests.twilio.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                <span>{tests.twilio.message}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Account SID"
+                value={localSettings.twilio.accountSid}
+                onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, accountSid: e.target.value } }))}
+              />
+              <Input
+                label="Auth Token"
+                type="password"
+                value={localSettings.twilio.authToken}
+                onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, authToken: e.target.value } }))}
+              />
+              <div className="md:col-span-2">
+                <Input
+                  label="رقم واتساب المرسل"
+                  value={localSettings.twilio.whatsappNumber}
+                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, whatsappNumber: e.target.value } }))}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Webhook */}
+          <section className="glass rounded-3xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Laptop className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-sm font-bold text-white">خادم استقبال الويب هوك المحلي (Webhook)</h2>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runTest('webhook')}
+                isLoading={tests.webhook?.status === 'testing'}
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
+              >
+                فحص الخادم
+              </Button>
+            </div>
+
+            {tests.webhook && (
+              <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                tests.webhook.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
+              }`}>
+                {tests.webhook.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                <span>{tests.webhook.message}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="المنفذ المحلى (Local Port)"
+                value={String(localSettings.webhook.port)}
+                onChange={(e) => setLocalSettings(s => ({ ...s, webhook: { ...s.webhook, port: parseInt(e.target.value) || 3001 } }))}
+              />
+              <Input
+                label="Webhook Secret"
+                type="password"
+                value={localSettings.webhook.secret}
+                onChange={(e) => setLocalSettings(s => ({ ...s, webhook: { ...s.webhook, secret: e.target.value } }))}
+              />
+            </div>
+          </section>
+
         </div>
       )}
 

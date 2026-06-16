@@ -5,7 +5,7 @@ import TopBar from './TopBar';
 
 export default function Layout() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 font-sans" dir="rtl">
+    <div className="flex h-screen w-screen overflow-hidden font-sans" dir="rtl" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-body)' }}>
       {/* الشريط الجانبي */}
       <Sidebar />
 
@@ -15,7 +15,7 @@ export default function Layout() {
         <TopBar />
 
         {/* مساحة عرض الصفحات */}
-        <main className="flex-1 overflow-y-auto bg-gray-950/20">
+        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: 'var(--bg-app)' }}>
           <Outlet />
         </main>
       </div>

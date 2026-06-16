@@ -14,15 +14,28 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-gray-900 border-l border-gray-800 flex flex-col h-screen shrink-0">
+    <aside
+      className="w-64 flex flex-col h-screen shrink-0"
+      style={{ backgroundColor: '#070033' }}
+    >
       {/* هيدر الشريط الجانبي */}
-      <div className="flex items-center gap-3 px-6 py-8 border-b border-gray-800/60 bg-gray-950/20">
-        <div className="w-10 h-10 rounded-2xl bg-indigo-600/10 flex items-center justify-center border border-indigo-500/20">
-          <Bot className="w-5 h-5 text-indigo-400" />
+      <div
+        className="flex items-center gap-3 px-6 py-8 border-b"
+        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      >
+        <div
+          className="w-10 h-10 rounded-2xl flex items-center justify-center"
+          style={{ background: '#FF6632', boxShadow: '0 4px 16px rgba(255,102,50,0.40)' }}
+        >
+          <Bot className="w-5 h-5" style={{ color: '#FFFFFF' }} />
         </div>
         <div>
-          <h1 className="text-base font-bold text-white tracking-wide leading-none">بصيرة CRM</h1>
-          <span className="text-[10px] text-gray-500 font-semibold mt-1 block">إدارة ذكية ومبيعات أسرع</span>
+          <h1 className="text-base font-bold tracking-wide leading-none" style={{ color: '#FFFFFF' }}>
+            بصيرة CRM
+          </h1>
+          <span className="text-[10px] font-semibold mt-1 block" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            إدارة ذكية ومبيعات أسرع
+          </span>
         </div>
       </div>
 
@@ -34,26 +47,57 @@ export default function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-200 group active:scale-98',
-                  {
-                    'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-600/5': isActive,
-                    'text-gray-400 hover:text-white hover:bg-gray-800/40 border border-transparent': !isActive,
-                  }
-                )
+              style={({ isActive }) =>
+                isActive
+                  ? {
+                      display: 'flex', alignItems: 'center', gap: '14px',
+                      padding: '14px 16px', borderRadius: '16px',
+                      fontSize: '14px', fontWeight: 700,
+                      background: '#FF6632',
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 20px rgba(255,102,50,0.40)',
+                      transition: 'all 0.2s',
+                      textDecoration: 'none',
+                    }
+                  : {
+                      display: 'flex', alignItems: 'center', gap: '14px',
+                      padding: '14px 16px', borderRadius: '16px',
+                      fontSize: '14px', fontWeight: 600,
+                      color: 'rgba(255,255,255,0.65)',
+                      transition: 'all 0.2s',
+                      textDecoration: 'none',
+                    }
               }
+              onMouseEnter={(e) => {
+                const el = e.currentTarget;
+                if (!el.getAttribute('aria-current')) {
+                  el.style.background = 'rgba(255,255,255,0.08)';
+                  el.style.color = '#FFFFFF';
+                }
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget;
+                if (!el.getAttribute('aria-current')) {
+                  el.style.background = 'transparent';
+                  el.style.color = 'rgba(255,255,255,0.65)';
+                }
+              }}
             >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span>{item.name}</span>
+              <Icon className="w-5 h-5 shrink-0" style={{ color: 'inherit' }} />
+              <span style={{ color: 'inherit' }}>{item.name}</span>
             </NavLink>
           );
         })}
       </nav>
 
       {/* الفوتر الجانبي */}
-      <div className="p-4 border-t border-gray-800/60 text-center bg-gray-950/20">
-        <p className="text-[10px] text-gray-600 font-medium">بصيرة CRM v1.0.0</p>
+      <div
+        className="p-4 border-t text-center"
+        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      >
+        <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          بصيرة CRM v1.0.0
+        </p>
       </div>
     </aside>
   );

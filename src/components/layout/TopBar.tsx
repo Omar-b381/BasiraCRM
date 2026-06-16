@@ -57,34 +57,60 @@ export default function TopBar() {
   }, [settings, testSupabase, testWebhook]);
 
   return (
-    <header className="h-20 bg-gray-900/40 border-b border-gray-800 flex items-center justify-between px-8 backdrop-blur-md">
-      {/* عنوان الصفحة الحالي */}
+    <header
+      className="h-20 flex items-center justify-between px-8 border-b"
+      style={{
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E4E6EF',
+        boxShadow: '0 1px 8px rgba(7,0,51,0.06)'
+      }}
+    >
+      {/* عنوان الصفحة */}
       <div>
-        <h2 className="text-lg font-bold text-white leading-none">{getPageTitle()}</h2>
+        <h2 className="text-lg font-bold leading-none" style={{ color: '#070033' }}>
+          {getPageTitle()}
+        </h2>
       </div>
 
-      {/* الحالة والمستحدم */}
-      <div className="flex items-center gap-6">
+      {/* الحالة والمستخدم */}
+      <div className="flex items-center gap-4">
         {/* حالة قاعدة البيانات */}
-        <div className="flex items-center gap-2 bg-gray-950/40 border border-gray-800/80 px-3 py-1.5 rounded-xl">
-          <Database className="w-4 h-4 text-gray-500" />
-          <span className="text-[11px] font-semibold text-gray-400">قاعدة البيانات:</span>
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+          style={{ backgroundColor: '#F7F8FC', border: '1px solid #E4E6EF' }}
+        >
+          <Database className="w-4 h-4" style={{ color: '#7E7C9E' }} />
+          <span className="text-[11px] font-semibold" style={{ color: '#4A4870' }}>قاعدة البيانات:</span>
           <StatusIndicator status={dbStatus} text={dbStatus === 'success' ? 'متصل' : dbStatus === 'failed' ? 'غير متصل' : 'جارٍ الفحص'} size="sm" />
         </div>
 
         {/* حالة خادم الـ Webhook */}
-        <div className="flex items-center gap-2 bg-gray-950/40 border border-gray-800/80 px-3 py-1.5 rounded-xl">
-          <Globe className="w-4 h-4 text-gray-500" />
-          <span className="text-[11px] font-semibold text-gray-400">الـ Webhook:</span>
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+          style={{ backgroundColor: '#F7F8FC', border: '1px solid #E4E6EF' }}
+        >
+          <Globe className="w-4 h-4" style={{ color: '#7E7C9E' }} />
+          <span className="text-[11px] font-semibold" style={{ color: '#4A4870' }}>الـ Webhook:</span>
           <StatusIndicator status={webhookStatus} text={webhookStatus === 'success' ? 'نشط' : webhookStatus === 'failed' ? 'معطّل' : 'جارٍ الفحص'} size="sm" />
         </div>
 
-        {/* معلومات المستخدم الحالي */}
-        <div className="flex items-center gap-2.5 bg-indigo-600/5 border border-indigo-500/10 px-3 py-1.5 rounded-xl">
-          <div className="w-6 h-6 rounded-lg bg-indigo-600/15 flex items-center justify-center border border-indigo-500/20">
-            <User className="w-3.5 h-3.5 text-indigo-400" />
+        {/* معلومات المستخدم */}
+        <div
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl"
+          style={{
+            background: 'linear-gradient(135deg, #FFF0EB, #FFF8EE)',
+            border: '1px solid rgba(255,102,50,0.25)'
+          }}
+        >
+          <div
+            className="w-6 h-6 rounded-lg flex items-center justify-center"
+            style={{ background: '#FF6632', boxShadow: '0 2px 8px rgba(255,102,50,0.35)' }}
+          >
+            <User className="w-3.5 h-3.5" style={{ color: '#FFFFFF' }} />
           </div>
-          <span className="text-xs font-semibold text-indigo-300">أدمن النظام</span>
+          <span className="text-xs font-bold" style={{ color: '#E5531A' }}>
+            أدمن النظام
+          </span>
         </div>
       </div>
     </header>

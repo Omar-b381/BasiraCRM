@@ -71,7 +71,7 @@ export default function ChatWindow({
         {/* حالة الخدمة والمزوّد */}
         <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 bg-gray-900/30 border border-gray-800 px-3 py-1.5 rounded-xl">
           <Shield className="w-3.5 h-3.5 text-indigo-500" />
-          <span>المزود: {activeConversation.contactPhone.includes('201220224039') || activeConversation.contactPhone.includes('20122') ? 'Infobip API' : 'Twilio WhatsApp'}</span>
+          <span>المزود: Twilio WhatsApp</span>
         </div>
       </div>
 

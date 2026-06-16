@@ -29,7 +29,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
       if (res.success) {
         // Map database schema values to Contact interface structure
         const mappedContacts: Contact[] = res.data.map((c: any) => {
-          const activeInvoices = (c.invoices || []).filter((inv: any) => inv.status !== 'ملغاة');
+          const activeInvoices = (c.invoices || []).filter((inv: any) => inv.status !== 'ملغي');
           return {
             id: c.customer_id,
             name: c.name,
@@ -38,7 +38,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
             email: c.email || '',
             customer_phone_2: c.customer_phone_2 || '',
             purchaseCount: activeInvoices.length,
-            totalSpend: activeInvoices.reduce((sum: number, inv: any) => sum + (inv.final_total || 0), 0),
+            totalSpend: activeInvoices.reduce((sum: number, inv: any) => sum + Number(inv.final_total || 0), 0),
             createdAt: c.created_at,
             tags: []
           };
@@ -48,6 +48,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
         set({ error: res.error || 'فشل تحميل جهات الاتصال', isLoading: false });
       }
     } catch (err) {
+      console.error('Error fetching contacts in store:', err);
       set({ error: 'خطأ أثناء الاتصال بقاعدة البيانات', isLoading: false });
     }
   },

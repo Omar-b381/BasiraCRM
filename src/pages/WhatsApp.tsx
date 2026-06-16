@@ -175,7 +175,7 @@ export default function WhatsApp() {
         return false;
       }
     } else {
-      // إرسال رسالة حقيقية عبر Twilio/Infobip
+      // إرسال رسالة حقيقية عبر Twilio
       return send(body);
     }
   };

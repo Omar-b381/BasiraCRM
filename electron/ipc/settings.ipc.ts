@@ -11,19 +11,63 @@ const cleanValue = (val?: string): string => {
 };
 
 export function setupSettingsIPC(store: Store) {
+  // دالة مساعدة للحصول على عميل Supabase المحدث
+  const getSupabaseClient = () => {
+    const settings = store.get('apiSettings') as { supabase?: { url: string; anonKey: string } };
+    const config = settings?.supabase;
+    if (!config?.url || !config?.anonKey) {
+      return null;
+    }
+    return createClient(config.url.replace(/[”"']/g, '').trim(), config.anonKey.replace(/[”"']/g, '').trim(), {
+      auth: { persistSession: false },
+      realtime: { transport: ws as any }
+    });
+  };
+
   // استرجاع الإعدادات المحفوظة
   ipcMain.handle('settings:get', async () => {
-    return store.get('apiSettings', {
+    const local = store.get('apiSettings', {
       supabase: { url: '', anonKey: '', serviceRoleKey: '' },
       twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
       webhook: { port: 3001, secret: '', enabled: false },
       employees: [],
       quickReplies: [],
       activeEmployeeId: '',
-    });
+    }) as any;
+
+    try {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        const { data: provider } = await supabase
+          .from('whatsapp_providers')
+          .select('*')
+          .eq('type', 'twilio')
+          .limit(1)
+          .maybeSingle();
+
+        if (provider) {
+          local.twilio = {
+            accountSid: provider.api_url || '',
+            authToken: provider.api_key || '',
+            whatsappNumber: provider.phone_number || '',
+          };
+          if (provider.config_json) {
+            local.webhook = {
+              port: provider.config_json.webhook_port || local.webhook?.port || 3001,
+              secret: provider.config_json.webhook_secret || local.webhook?.secret || '',
+              enabled: provider.config_json.webhook_enabled !== undefined ? provider.config_json.webhook_enabled : (local.webhook?.enabled || false),
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching API settings from Supabase:', err);
+    }
+
+    return local;
   });
 
-  // حفظ الإعدادات (محلياً — مشفرة)
+  // حفظ الإعدادات (محلياً وسحابياً)
   ipcMain.handle('settings:save', async (_, settings) => {
     if (!settings || typeof settings !== 'object') {
       return { success: false, error: 'بيانات غير صالحة' };
@@ -51,8 +95,55 @@ export function setupSettingsIPC(store: Store) {
       activeEmployeeId: cleanValue((settings as any).activeEmployeeId),
     };
 
+    // 1. حفظ الإعدادات محلياً
     store.set('apiSettings', cleaned);
-    return { success: true, message: 'تم حفظ الإعدادات بنجاح' };
+
+    // 2. حفظ الإعدادات سحابياً في جدول whatsapp_providers
+    try {
+      if (cleaned.supabase.url && cleaned.supabase.anonKey) {
+        const supabase = createClient(cleaned.supabase.url, cleaned.supabase.anonKey, {
+          auth: { persistSession: false },
+          realtime: { transport: ws as any }
+        });
+        const twilioData = {
+          name: 'twilio',
+          type: 'twilio',
+          api_key: cleaned.twilio.authToken,
+          api_url: cleaned.twilio.accountSid,
+          phone_number: cleaned.twilio.whatsappNumber,
+          is_active: true,
+          config_json: {
+            account_sid: cleaned.twilio.accountSid,
+            from_number: cleaned.twilio.whatsappNumber,
+            webhook_secret: cleaned.webhook.secret,
+            webhook_port: cleaned.webhook.port,
+            webhook_enabled: cleaned.webhook.enabled
+          }
+        };
+
+        const { data: existing } = await supabase
+          .from('whatsapp_providers')
+          .select('id')
+          .eq('type', 'twilio')
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from('whatsapp_providers')
+            .update(twilioData)
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('whatsapp_providers')
+            .insert(twilioData);
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing API settings to Supabase:', err);
+    }
+
+    return { success: true, message: 'تم حفظ الإعدادات بنجاح وسحابياً' };
   });
 
   // ═══════════════════════════════════════════

@@ -86,6 +86,15 @@ function startLocalMessageServer() {
     }
   });
 
+  // التعامل مع أخطاء التشغيل (مثل أن يكون المنفذ محجوزاً)
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn('⚠️ المنفذ 3002 مستخدم بالفعل. سيتم تخطي تشغيل خادم الاستقبال لتجنب الانهيار.');
+    } else {
+      console.error('❌ خطأ في خادم استقبال الرسائل:', err);
+    }
+  });
+
   // الاستماع على منفذ 3002
   server.listen(3002, 'localhost', () => {
     console.log(' خادم استقبال الرسائل للـ Main Process يعمل على منفذ 3002');

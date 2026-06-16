@@ -43,6 +43,7 @@ export function calculateRawMetrics(invoices: InvoiceRecord[]): Map<string, Cust
 
   for (const inv of invoices) {
     if (!inv.customer_id) continue;
+    if (inv.status === 'ملغي') continue; // Exclude cancelled invoices
     const existing = metricsMap.get(inv.customer_id);
     const orderDate = new Date(inv.invoice_date).getTime();
     const daysSince = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
@@ -78,8 +79,9 @@ export function scoreMetrics(metricsMap: Map<string, CustomerMetrics>): Map<stri
   const monetaries = allMetrics.map((m) => m.monetary).sort((a, b) => a - b);
 
   const getQuintile = (value: number, sorted: number[], reverse = false): number => {
+    if (sorted.length <= 1) return reverse ? 1 : 5;
     const idx = sorted.findIndex((v) => v >= value);
-    const percentile = idx === -1 ? 100 : (idx / sorted.length) * 100;
+    const percentile = idx === -1 ? 100 : (idx / (sorted.length - 1)) * 100;
     const score = Math.ceil(percentile / 20) || 1;
     return reverse ? 6 - score : score;
   };
@@ -189,7 +191,13 @@ export function runRFMAnalysis(
 
   const contactsWithScores = contacts.map((contact) => {
     const score = scores.get(contact.id);
-    return score ? { ...contact, rfmScore: score } : contact;
+    const metrics = rawMetrics.get(contact.id);
+    return score ? {
+      ...contact,
+      purchaseCount: metrics ? metrics.frequency : contact.purchaseCount || 0,
+      totalSpend: metrics ? metrics.monetary : contact.totalSpend || 0,
+      rfmScore: score
+    } : contact;
   });
 
   return { contactsWithScores, segmentAffinities };

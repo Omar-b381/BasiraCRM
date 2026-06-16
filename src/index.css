@@ -4,40 +4,202 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   🎨 لوحة الألوان – مستوحاة من Cloudflare
+   ═══════════════════════════════════════════════════════════════
+   #FF6632  برتقالي نار  ← اللون الأساسي (Primary Brand)
+   #FBAC41  ذهبي دافئ   ← اللون الثانوي (Accent / Warning)
+   #070033  كحلي داكن   ← النصوص الداكنة + الشريط الجانبي
+   #FFFFFF  أبيض ناصع   ← خلفية البطاقات
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── الخلفيات ── */
+  --bg-app:        #F7F8FC;          /* خلفية التطبيق – أبيض بارد خفيف */
+  --bg-card:       #FFFFFF;          /* البطاقات – أبيض ناصع */
+  --bg-sunken:     #EFF0F7;          /* مناطق متعمقة */
+  --bg-sidebar:    #070033;          /* الشريط الجانبي – كحلي داكن */
+  --bg-sidebar-hover: #0F0A4A;       /* هوفر الشريط الجانبي */
+  --bg-sidebar-active: #FF6632;      /* العنصر النشط – برتقالي */
+
+  /* ── الحدود ── */
+  --border:        #E4E6EF;
+  --border-strong: #C8CBE0;
+
+  /* ── الألوان الأساسية للماركة ── */
+  --primary:       #FF6632;          /* برتقالي نار */
+  --primary-dark:  #E5531A;
+  --primary-light: #FFF0EB;
+  --primary-glow:  rgba(255, 102, 50, 0.20);
+
+  --accent:        #FBAC41;          /* ذهبي دافئ */
+  --accent-dark:   #E09620;
+  --accent-light:  #FFF8E8;
+  --accent-glow:   rgba(251, 172, 65, 0.20);
+
+  /* ── النصوص ── */
+  --text-heading:  #070033;          /* عناوين – كحلي داكن */
+  --text-body:     #1A1645;          /* نص أساسي */
+  --text-secondary:#4A4870;          /* نص ثانوي */
+  --text-muted:    #7E7C9E;          /* نص خافت */
+  --text-sidebar:  rgba(255,255,255,0.75);   /* نصوص الشريط الجانبي */
+  --text-sidebar-active: #FFFFFF;
+
+  /* ── ألوان الحالات ── */
+  --success:       #10B981;
+  --success-light: #D1FAE5;
+  --danger:        #EF4444;
+  --danger-light:  #FEE2E2;
+
+  /* ── ظلال ── */
+  --shadow-sm:   0 1px 4px rgba(7, 0, 51, 0.06);
+  --shadow-md:   0 4px 16px rgba(7, 0, 51, 0.10);
+  --shadow-lg:   0 8px 32px rgba(7, 0, 51, 0.14);
+  --shadow-primary: 0 4px 20px rgba(255, 102, 50, 0.30);
+  --shadow-accent:  0 4px 16px rgba(251, 172, 65, 0.28);
+
+  /* ── متغيرات RGB لاستخدامها مع Tailwind opacity ── */
+  --bg-primary-rgb:    247, 248, 252;
+  --bg-secondary-rgb:  255, 255, 255;
+  --bg-tertiary-rgb:   239, 240, 247;
+  --border-color-rgb:  228, 230, 239;
+  --border-hover-rgb:  200, 203, 224;
+  --text-primary-rgb:  7, 0, 51;
+  --text-secondary-rgb:74, 72, 112;
+  --text-tertiary-rgb: 126, 124, 158;
+  --text-muted-rgb:    160, 158, 190;
+
+  /* مشتقات مباشرة */
+  --bg-primary:    rgb(var(--bg-primary-rgb));
+  --bg-secondary:  rgb(var(--bg-secondary-rgb));
+  --bg-tertiary:   rgb(var(--bg-tertiary-rgb));
+  --border-color:  rgb(var(--border-color-rgb));
+  --border-hover:  rgb(var(--border-hover-rgb));
+  --text-primary:  rgb(var(--text-primary-rgb));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🌐 القاعدة العامة للصفحة
+   ═══════════════════════════════════════════════════════════════ */
 body {
   margin: 0;
   font-family: 'Cairo', 'Inter', sans-serif;
-  background-color: #030712; /* gray-950 */
-  color: #f3f4f6; /* gray-100 */
+  background-color: var(--bg-app);
+  color: var(--text-body);
   direction: rtl;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* تصميم شريط التمرير بشكل احترافي وجذاب */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ═══════════════════════════════════════════════════════════════
+   🔠 فرض الخط على كافة العناصر التفاعلية
+   ═══════════════════════════════════════════════════════════════ */
+input, select, textarea, button, optgroup, option {
+  font-family: 'Cairo', 'Inter', sans-serif !important;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+
+/* ═══════════════════════════════════════════════════════════════
+   📜 شريط التمرير الأنيق
+   ═══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937; /* gray-800 */
-  border-radius: 9999px;
+  background: var(--border-strong);
+  border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #374151; /* gray-700 */
-}
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
+/* ═══════════════════════════════════════════════════════════════
+   💎 بطاقات الزجاج
+   ═══════════════════════════════════════════════════════════════ */
 .glass {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-md);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ✨ تدرج النص
+   ═══════════════════════════════════════════════════════════════ */
 .text-gradient {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #FF6632 0%, #FBAC41 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🎯 إصلاح شامل: كل النصوص الفاتحة → #070033 داكن على الخلفية الفاتحة
+   ═══════════════════════════════════════════════════════════════ */
+
+/* النصوص الفاتحة كلها تصبح كحلي داكن */
+.text-white,
+.text-gray-100, .text-gray-200,
+.text-slate-100, .text-slate-200 {
+  color: #070033 !important;
+}
+
+/* ── الشريط الجانبي: خلفيته #070033 فنصوصه تبقى بيضاء ──────── */
+aside .text-white,
+aside .text-gray-100, aside .text-gray-200,
+aside .text-slate-100, aside .text-slate-200 {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ── أزرار ذات خلفية ملونة صلبة: نصوصها تبقى بيضاء ────────── */
+[class*="bg-indigo-6"],   [class*="bg-indigo-6"] *,
+[class*="bg-red-6"],      [class*="bg-red-6"] *,
+[class*="bg-red-5"],      [class*="bg-red-5"] *,
+[class*="bg-emerald-6"],  [class*="bg-emerald-6"] *,
+[class*="bg-amber-6"],    [class*="bg-amber-6"] *,
+[class*="bg-orange-5"],   [class*="bg-orange-5"] *,
+[class*="bg-orange-6"],   [class*="bg-orange-6"] *,
+[class*="hover:bg-indigo-6"]:hover,  [class*="hover:bg-indigo-6"]:hover *,
+[class*="hover:bg-red-6"]:hover,     [class*="hover:bg-red-6"]:hover *,
+[class*="hover:bg-emerald-6"]:hover, [class*="hover:bg-emerald-6"]:hover *,
+[class*="hover:bg-amber-6"]:hover,   [class*="hover:bg-amber-6"]:hover *,
+[class*="hover:bg-orange-5"]:hover,  [class*="hover:bg-orange-5"]:hover *,
+[class*="hover:bg-orange-6"]:hover,  [class*="hover:bg-orange-6"]:hover * {
+  color: #ffffff !important;
+}
+
+/* ── هوفر الخلفيات الرمادية المحوّلة → نص داكن ─────────────── */
+[class*="hover:bg-slate-8"]:hover,  [class*="hover:bg-gray-8"]:hover,
+[class*="hover:bg-slate-7"]:hover,  [class*="hover:bg-gray-7"]:hover,
+[class*="hover:bg-slate-9"]:hover,  [class*="hover:bg-gray-9"]:hover {
+  color: #070033 !important;
+}
+[class*="hover:bg-slate-8"]:hover *, [class*="hover:bg-gray-8"]:hover *,
+[class*="hover:bg-slate-7"]:hover *, [class*="hover:bg-gray-7"]:hover * {
+  color: #070033 !important;
+}
+
+/* ── ألوان النصوص الملونة: داكنة كافية للقراءة ─────────────── */
+.text-indigo-300, .text-indigo-400 { color: #4338CA !important; }
+.text-emerald-400, .text-emerald-500 { color: #059669 !important; }
+.text-amber-400   { color: #B45309 !important; }
+.text-cyan-400    { color: #0369A1 !important; }
+.text-purple-400  { color: #7C3AED !important; }
+.text-red-400     { color: #DC2626 !important; }
+.text-gray-300, .text-gray-400,
+.text-slate-300, .text-slate-400 { color: #4A4870 !important; }
+.text-gray-500, .text-slate-500,
+.text-gray-600, .text-slate-600   { color: #7E7C9E !important; }
+
+/* ── hover:text-white → داكن بدلاً من أبيض ──────────────────── */
+/* الهوفر على الخلفيات الرمادية/السجيل: يصبح نص داكن */
+[class*="hover:text-white"]:not([class*="hover:bg-indigo-6"]):not([class*="hover:bg-red-6"]):not([class*="hover:bg-emerald-6"]):not([class*="hover:bg-amber-6"]):not([class*="hover:bg-orange-6"]):not([class*="hover:bg-green-6"]):hover {
+  color: #070033 !important;
+}
+
+/* استثناء: hover:text-white مع خلفية ملونة صلبة → يبقى أبيض */
+[class*="hover:bg-indigo-6"]:hover,
+[class*="hover:bg-red-6"]:hover,
+[class*="hover:bg-emerald-6"]:hover, [class*="hover:bg-emerald-650"]:hover,
+[class*="hover:bg-amber-6"]:hover,
+[class*="hover:bg-orange-6"]:hover, [class*="hover:bg-orange-5"]:hover,
+[class*="hover:bg-green-6"]:hover {
+  color: #ffffff !important;
 }
