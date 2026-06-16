@@ -1,0 +1,33 @@
+version: '3.9'
+
+services:
+  crm-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: arabic-crm-dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"    # Vite dev server
+      - "3001:3001"    # Webhook receiver للـ WhatsApp
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DISPLAY=${DISPLAY:-:0}
+    network_mode: host
+    restart: unless-stopped
+
+  webhook-receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: arabic-crm-webhook
+    command: npx ts-node electron/webhook-server.ts
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    restart: unless-stopped
