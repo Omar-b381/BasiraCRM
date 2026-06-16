@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
 import WhatsApp from './pages/WhatsApp';
 import RFMAnalysis from './pages/RFMAnalysis';
+import InvoiceCreate from './pages/InvoiceCreate';
 import Settings from './pages/Settings';
 import { useSettingsStore } from './store/useSettingsStore';
 
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="contacts" element={<Contacts />} />
           <Route path="whatsapp" element={<WhatsApp />} />
           <Route path="rfm" element={<RFMAnalysis />} />
+          <Route path="invoices" element={<InvoiceCreate />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

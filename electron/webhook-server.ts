@@ -13,12 +13,59 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// 2. استقبال webhook الواتساب من Twilio
+// 2. استقبال webhook الواتساب من Twilio / Infobip
 app.post('/webhook/whatsapp', async (req, res) => {
   try {
+    // التحقق من نوع الويب هوك (Infobip يحتوي على مصفوفة results)
+    if (req.body.results && Array.isArray(req.body.results)) {
+      console.log(`📥 ويب هوك Infobip وارد: ${req.body.results.length} رسالة`);
+
+      for (const result of req.body.results) {
+        const fromNum = result.from;
+        const toNum = result.to;
+        const bodyText = result.message?.text || '';
+        const msgSid = result.messageId || `INFOBIP_${Date.now()}`;
+
+        if (!fromNum || !bodyText) continue;
+
+        const from = `whatsapp:+${fromNum.replace('+', '').trim()}`;
+        const to = `whatsapp:+${toNum ? toNum.replace('+', '').trim() : ''}`;
+
+        console.log(`📥 رسالة واردة من Infobip: ${from} | المحتوى: ${bodyText}`);
+
+        const payload = {
+          from,
+          to,
+          body: bodyText,
+          sid: msgSid,
+        };
+
+        // تمرير الرسالة إلى عملية Electron الرئيسية على منفذ 3002
+        try {
+          const forwardRes = await fetch('http://localhost:3002/incoming', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!forwardRes.ok) {
+            console.error(`❌ فشل تمرير رسالة Infobip لـ Electron: ${forwardRes.statusText}`);
+          } else {
+            console.log('✅ تم تمرير رسالة Infobip بنجاح إلى Electron');
+          }
+        } catch (err) {
+          console.error('⚠️ Electron غير متصل حالياً. تم تجاهل التوجيه الفوري لرسالة Infobip.');
+        }
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    }
+
+    // افتراض أنه ويب هوك Twilio
     const { From, To, Body, MessageSid } = req.body;
 
-    console.log(`📥 رسالة واردة من: ${From} | المحتوى: ${Body}`);
+    console.log(`📥 رسالة واردة من Twilio: ${From} | المحتوى: ${Body}`);
 
     if (!From || !Body) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });

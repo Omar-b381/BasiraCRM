@@ -5,6 +5,7 @@ import http from 'http';
 import { setupWhatsAppIPC } from './ipc/whatsapp.ipc';
 import { setupSupabaseIPC } from './ipc/supabase.ipc';
 import { setupSettingsIPC } from './ipc/settings.ipc';
+import { setupInvoiceIPC } from './ipc/invoice.ipc';
 
 // ⚠️ المتجر المحلي للإعدادات — لا يصل إلى Supabase مباشرة
 const store = new Store({
@@ -98,6 +99,7 @@ app.whenReady().then(async () => {
   setupSettingsIPC(store);
   setupWhatsAppIPC(store);
   setupSupabaseIPC(store);
+  setupInvoiceIPC(store);
   
   // تشغيل خادم استقبال الرسائل المحلي
   startLocalMessageServer();

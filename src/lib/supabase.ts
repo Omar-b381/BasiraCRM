@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // تنظيف الرموز الزائدة مثل الاقتباس الذكي الذى قد يوجد فى ملف .env
 const cleanEnvVar = (val?: string): string => {
@@ -6,10 +6,22 @@ const cleanEnvVar = (val?: string): string => {
   return val.replace(/[”"']/g, '').trim();
 };
 
-const supabaseUrl = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_URL);
-const supabaseAnonKey = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_ANON_KEY);
+const defaultUrl = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_URL) || 'https://dtklpugpwejrjnkxdkhh.supabase.co';
+const defaultAnonKey = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_ANON_KEY) || 'placeholder';
 
-export const supabase = createClient(
-  supabaseUrl || 'https://dtklpugpwejrjnkxdkhh.supabase.co',
-  supabaseAnonKey || 'placeholder'
-);
+let activeClient = createClient(defaultUrl, defaultAnonKey);
+
+export const updateSupabaseClient = (url: string, anonKey: string) => {
+  const cleanUrl = cleanEnvVar(url);
+  const cleanKey = cleanEnvVar(anonKey);
+  if (cleanUrl && cleanKey && cleanKey !== 'placeholder') {
+    activeClient = createClient(cleanUrl, cleanKey);
+  }
+};
+
+// Proxy to allow dynamic redirection of calls to the active client
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(target, prop, receiver) {
+    return Reflect.get(activeClient, prop, receiver);
+  }
+});

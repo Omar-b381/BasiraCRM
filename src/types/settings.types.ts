@@ -16,10 +16,20 @@ export interface WebhookConfig {
   enabled: boolean;
 }
 
+export interface Employee {
+  id: string;
+  name: string;
+  role: 'admin' | 'supervisor' | 'agent';
+  permissions: string[];
+}
+
 export interface AppSettings {
   supabase: SupabaseConfig;
   twilio: TwilioConfig;
   webhook: WebhookConfig;
+  employees?: Employee[];
+  quickReplies?: string[];
+  activeEmployeeId?: string;
   lastUpdated?: string;
 }
 

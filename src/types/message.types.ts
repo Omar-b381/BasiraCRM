@@ -12,9 +12,11 @@ export interface WhatsAppMessage {
   mediaUrl?: string;
   timestamp: string;
   readAt?: string;
+  message_type?: string;
 }
 
 export interface Conversation {
+  id?: number;
   contactId: string;
   contactName: string;
   contactPhone: string;
@@ -22,5 +24,6 @@ export interface Conversation {
   unreadCount: number;
   messages: WhatsAppMessage[];
   lastActivity: string;
+  status?: string;
 }
 

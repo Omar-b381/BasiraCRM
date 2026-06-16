@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type Store from 'electron-store';
+import ws from 'ws';
 
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  ⚠️ SUPABASE IPC HANDLER                                      ║
@@ -35,6 +36,7 @@ export function setupSupabaseIPC(store: Store) {
       lastAnonKey = cleanKey;
       cachedClient = createClient(cleanUrl, cleanKey, {
         auth: { persistSession: false },
+        realtime: { transport: ws as any },
         global: {
           headers: {
             'X-Client-Info': 'arabic-crm/1.0.0',
@@ -139,9 +141,12 @@ export function setupSupabaseIPC(store: Store) {
       const { data, error } = await client
         .from('invoices')
         .select(`
+          invoice_id,
           customer_id,
+          customer_name,
           invoice_date,
           final_total,
+          status,
           invoice_items (
             product_name,
             quantity,

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings, ConnectionTestResult } from '../types/settings.types';
+import { updateSupabaseClient } from '../lib/supabase';
 
 interface SettingsState {
   settings: AppSettings;
@@ -31,6 +32,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const s = await window.electronAPI.settings.get();
       if (s) {
         set({ settings: s, isLoading: false });
+        if (s.supabase?.url && s.supabase?.anonKey) {
+          updateSupabaseClient(s.supabase.url, s.supabase.anonKey);
+        }
       } else {
         set({ isLoading: false });
       }
@@ -45,6 +49,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const res = await window.electronAPI.settings.save(settings);
       if (res.success) {
         set({ settings, saveStatus: 'success' });
+        if (settings.supabase?.url && settings.supabase?.anonKey) {
+          updateSupabaseClient(settings.supabase.url, settings.supabase.anonKey);
+        }
         setTimeout(() => set({ saveStatus: 'idle' }), 3000);
         return true;
       } else {

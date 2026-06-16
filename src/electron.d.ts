@@ -21,6 +21,18 @@ export interface IElectronAPI {
     getProviders: () => Promise<any>;
     saveProvider: (provider: any) => Promise<any>;
   };
+  invoice: {
+    searchCustomer: (query: string) => Promise<any>;
+    create: (draft: any) => Promise<any>;
+    update: (payload: { invoiceId: number; status: string; notes?: string }) => Promise<any>;
+    getById: (invoiceId: number) => Promise<any>;
+    search: (query: string) => Promise<any>;
+    generatePdf: (invoiceData: any) => Promise<any>;
+    printDirect: (invoiceData: any) => Promise<any>;
+    searchProducts: (query: string) => Promise<any>;
+    getProductVariants: (productName: string) => Promise<any>;
+    getNextId: () => Promise<any>;
+  };
 }
 
 declare global {

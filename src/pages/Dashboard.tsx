@@ -270,8 +270,8 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/40 text-xs text-gray-300">
-              {recentInvoices.map((inv) => (
-                <tr key={inv.invoice_id} className="hover:bg-gray-900/10 transition-all">
+              {recentInvoices.map((inv, index) => (
+                <tr key={inv.invoice_id || index} className="hover:bg-gray-900/10 transition-all">
                   <td className="py-4 pr-2 font-bold text-gray-500">#{inv.invoice_id}</td>
                   <td className="py-4 font-bold text-white">{inv.customers?.name || inv.customer_name}</td>
                   <td className="py-4 text-gray-400">{new Date(inv.invoice_date).toLocaleDateString('ar-EG')}</td>

@@ -2,6 +2,8 @@ import { ipcMain, BrowserWindow } from 'electron';
 import Twilio from 'twilio';
 import type Store from 'electron-store';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import ws from 'ws';
+import Pusher from 'pusher-js';
 
 interface TwilioConfig {
   accountSid: string;
@@ -15,6 +17,74 @@ interface SupabaseConfig {
 }
 
 export function setupWhatsAppIPC(store: Store) {
+  let realtimeChannel: any = null;
+
+  // تهيئة الاستماع لـ Pusher لاستقبال الرسائل سحابياً بشكل مجاني وفوري
+  try {
+    const pusher = new Pusher("95a9339dddab8dc6b6c1", {
+      cluster: "mt1"
+    });
+
+    const channel = pusher.subscribe("whatsapp-channel");
+
+    channel.bind("incoming-message", async (data: any) => {
+      console.log('📡 رسالة واردة مستلمة من Pusher في الـ Main Process:', data);
+      const { from, body, sid } = data;
+      if (!from || !body) return;
+
+      try {
+        const supabase = getSupabaseClient();
+        const { customerId, conversationId } = await ensureConversation(supabase, from);
+
+        // حفظ الرسالة في قاعدة البيانات Supabase
+        const { data: insertedMsg, error: insertError } = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: conversationId,
+            direction: 'inbound',
+            content: body,
+            message_type: 'text',
+            status: 'delivered',
+            provider_msg_id: sid || `PUSHER_${Date.now()}`,
+            sent_at: new Date().toISOString()
+          })
+          .select('*')
+          .single();
+
+        if (insertError) throw insertError;
+
+        // تحديث المحادثة لتظهر في الأعلى
+        await supabase
+          .from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversationId);
+
+        // بث للواجهة الرسومية
+        const formattedMsg = {
+          id: String(insertedMsg.id),
+          twilioSid: insertedMsg.provider_msg_id,
+          contactId: customerId,
+          contactPhone: from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
+          direction: 'inbound',
+          body: insertedMsg.content,
+          status: 'delivered',
+          timestamp: insertedMsg.sent_at
+        };
+
+        const windows = BrowserWindow.getAllWindows();
+        for (const win of windows) {
+          win.webContents.send('whatsapp:incoming', formattedMsg);
+        }
+      } catch (err) {
+        console.error('Error saving Pusher message in Main Process:', err);
+      }
+    });
+
+    console.log('✅ تم تشغيل مستمع Pusher سحابياً بنجاح');
+  } catch (err) {
+    console.error('⚠️ فشل تشغيل مستمع Pusher في الـ Main Process:', err);
+  }
+
   // دالة مساعدة للحصول على عميل Supabase المحدث
   const getSupabaseClient = (): SupabaseClient => {
     const settings = store.get('apiSettings') as { supabase?: SupabaseConfig };
@@ -23,8 +93,68 @@ export function setupWhatsAppIPC(store: Store) {
       throw new Error('إعدادات Supabase غير مكتملة');
     }
     return createClient(config.url.replace(/[”"']/g, '').trim(), config.anonKey.replace(/[”"']/g, '').trim(), {
-      auth: { persistSession: false }
+      auth: { persistSession: false },
+      realtime: { transport: ws as any },
     });
+  };
+
+  const startRealtimeSubscription = (supabase: SupabaseClient) => {
+    if (realtimeChannel) {
+      console.log('🔄 Re-subscribing to Supabase Realtime...');
+      realtimeChannel.unsubscribe();
+    } else {
+      console.log('📡 Subscribing to Supabase Realtime...');
+    }
+    
+    realtimeChannel = supabase
+      .channel('public:messages_realtime_stream')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'direction=eq.inbound'
+      }, async (payload) => {
+        try {
+          const newMsg = payload.new;
+          console.log('📬 Live message inserted in DB:', newMsg);
+          
+          // Get customer phone
+          const { data: conv } = await supabase
+            .from('conversations')
+            .select(`
+              customer_id,
+              customers (
+                phone
+              )
+            `)
+            .eq('id', newMsg.conversation_id)
+            .single() as any;
+            
+          if (conv) {
+            const custPhone = conv.customers?.phone || '';
+            const formattedMsg = {
+              id: String(newMsg.id),
+              twilioSid: newMsg.provider_msg_id,
+              contactId: conv.customer_id,
+              contactPhone: custPhone.startsWith('whatsapp:') ? custPhone : `whatsapp:${custPhone}`,
+              direction: 'inbound',
+              body: newMsg.content,
+              status: 'delivered',
+              timestamp: newMsg.sent_at
+            };
+
+            const windows = BrowserWindow.getAllWindows();
+            for (const win of windows) {
+              win.webContents.send('whatsapp:incoming', formattedMsg);
+            }
+          }
+        } catch (err) {
+          console.error('Error handling realtime message insert:', err);
+        }
+      })
+      .subscribe((status) => {
+        console.log(`📡 Realtime subscription status: ${status}`);
+      });
   };
 
   // دالة مساعدة للحصول على عميل Twilio المحدث
@@ -114,18 +244,64 @@ export function setupWhatsAppIPC(store: Store) {
   // إرسال رسالة WhatsApp
   ipcMain.handle('whatsapp:send', async (_, { to, body }) => {
     try {
-      const { client, fromNumber } = getTwilioClient();
       const supabase = getSupabaseClient();
 
-      // تأكد من صيغة الرقم المستهدف
-      const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+      // 1. الحصول على مزود الخدمة النشط من قاعدة البيانات
+      const { data: provider } = await supabase
+        .from('whatsapp_providers')
+        .select('*')
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
 
-      // إرسال عبر Twilio
-      const twilioRes = await client.messages.create({
-        from: fromNumber,
-        to: toNumber,
-        body,
-      });
+      let messageId = '';
+      let statusStr = 'sent';
+
+      if (provider && provider.type === 'infobip') {
+        const cleanPhone = to.replace('whatsapp:', '').replace('+', '').trim();
+        const apiUrl = provider.api_url.replace(/[”"']/g, '').trim();
+        const apiKey = provider.api_key.replace(/[”"']/g, '').trim();
+        const fromPhone = provider.phone_number.replace(/[”"']/g, '').trim();
+
+        const response = await fetch(`https://${apiUrl}/whatsapp/1/message/text`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `App ${apiKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            from: fromPhone,
+            to: cleanPhone,
+            content: {
+              text: body
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`فشل الإرسال عبر Infobip: ${errText || response.statusText}`);
+        }
+
+        const resJson: any = await response.json();
+        messageId = resJson.messages?.[0]?.messageId || 'INFOBIP_' + Date.now();
+        statusStr = 'delivered';
+      } else {
+        const { client, fromNumber } = getTwilioClient();
+        // تأكد من صيغة الرقم المستهدف
+        const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+
+        // إرسال عبر Twilio
+        const twilioRes = await client.messages.create({
+          from: fromNumber,
+          to: toNumber,
+          body,
+        });
+
+        messageId = twilioRes.sid;
+        statusStr = twilioRes.status;
+      }
 
       // إدراج وحفظ في Supabase
       const { customerId, conversationId } = await ensureConversation(supabase, to);
@@ -137,8 +313,8 @@ export function setupWhatsAppIPC(store: Store) {
           direction: 'outbound',
           content: body,
           message_type: 'text',
-          status: 'sent',
-          provider_msg_id: twilioRes.sid,
+          status: statusStr,
+          provider_msg_id: messageId,
           sent_at: new Date().toISOString()
         })
         .select('*')
@@ -158,16 +334,16 @@ export function setupWhatsAppIPC(store: Store) {
         .insert({
           customer_id: customerId,
           type: 'whatsapp',
-          status: 'sent',
+          status: statusStr,
           sent_at: new Date().toISOString(),
-          provider_id: 2, // Twilio / Infobip
+          provider_id: provider?.id || 2,
           message_content: body
         });
 
       return {
         success: true,
-        sid: twilioRes.sid,
-        status: twilioRes.status,
+        sid: messageId,
+        status: statusStr,
         timestamp: new Date().toISOString(),
         message: {
           id: String(insertedMsg.id),
@@ -176,7 +352,7 @@ export function setupWhatsAppIPC(store: Store) {
           contactPhone: to,
           direction: 'outbound',
           body: insertedMsg.content,
-          status: 'sent',
+          status: statusStr,
           timestamp: insertedMsg.sent_at
         }
       };
@@ -192,6 +368,13 @@ export function setupWhatsAppIPC(store: Store) {
   ipcMain.handle('whatsapp:getConversations', async () => {
     try {
       const supabase = getSupabaseClient();
+
+      // تهيئة الاشتراك اللحظي التلقائي
+      try {
+        startRealtimeSubscription(supabase);
+      } catch (rtErr) {
+        console.error('Failed to start realtime subscription:', rtErr);
+      }
 
       // جلب الجلسات مع العملاء
       const { data: conversations, error } = await supabase
@@ -226,6 +409,7 @@ export function setupWhatsAppIPC(store: Store) {
 
           return {
             id: conv.id,
+            status: conv.status,
             contactId: conv.customer_id,
             contactName: conv.customers?.name || 'عميل غير معروف',
             contactPhone: custPhone.startsWith('whatsapp:') ? custPhone : `whatsapp:+${custPhone}`,

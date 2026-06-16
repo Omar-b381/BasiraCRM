@@ -35,4 +35,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getProviders: () => ipcRenderer.invoke('db:getProviders'),
     saveProvider: (provider: unknown) => ipcRenderer.invoke('db:saveProvider', provider),
   },
+
+  invoice: {
+    searchCustomer: (query: string) => ipcRenderer.invoke('invoice:searchCustomer', query),
+    create: (draft: unknown) => ipcRenderer.invoke('invoice:create', draft),
+    update: (payload: { invoiceId: number; status: string; notes?: string }) => ipcRenderer.invoke('invoice:update', payload),
+    getById: (invoiceId: number) => ipcRenderer.invoke('invoice:getById', invoiceId),
+    search: (query: string) => ipcRenderer.invoke('invoice:search', query),
+    generatePdf: (invoiceData: unknown) => ipcRenderer.invoke('invoice:generatePdf', invoiceData),
+    printDirect: (invoiceData: unknown) => ipcRenderer.invoke('invoice:printDirect', invoiceData),
+    searchProducts: (query: string) => ipcRenderer.invoke('invoice:searchProducts', query),
+    getProductVariants: (productName: string) => ipcRenderer.invoke('invoice:getProductVariants', productName),
+    getNextId: () => ipcRenderer.invoke('invoice:getNextId'),
+  },
 });

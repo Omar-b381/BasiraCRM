@@ -7,7 +7,10 @@ export interface InvoiceItemRecord {
 }
 
 export interface InvoiceRecord {
+  invoice_id?: number | string;
   customer_id: string;
+  customer_name?: string;
+  status?: string;
   invoice_date: string;
   final_total: number;
   invoice_items?: InvoiceItemRecord[];

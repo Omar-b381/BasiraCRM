@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MessageCircle, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import type { Conversation } from '../../types/message.types';
 import Input from '../ui/Input';
 
@@ -17,13 +17,21 @@ export default function ConversationList({
   isLoading = false
 }: ConversationListProps) {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'pending' | 'closed'>('active');
 
-  // تصفية المحادثات حسب الاسم أو الرقم
-  const filtered = conversations.filter(
-    (c) =>
+  // تصفية المحادثات حسب البحث وحالة الجلسة
+  const filtered = conversations.filter((c) => {
+    const matchesSearch =
       c.contactName?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contactPhone?.includes(search)
-  );
+      c.contactPhone?.includes(search);
+
+    const statusVal = c.status || 'active';
+    const normalizedStatus =
+      (statusVal === 'open' || statusVal === 'active') ? 'active' :
+      (statusVal === 'pending' || statusVal === 'waiting') ? 'pending' : 'closed';
+
+    return matchesSearch && normalizedStatus === statusFilter;
+  });
 
   const formatLastActivity = (isoString?: string) => {
     if (!isoString) return '';
@@ -37,7 +45,7 @@ export default function ConversationList({
   return (
     <div className="w-80 bg-gray-900/40 border-l border-gray-800 flex flex-col h-full shrink-0">
       {/* البحث في الدردشات */}
-      <div className="p-4 border-b border-gray-800/60 bg-gray-900/10">
+      <div className="p-4 border-b border-gray-800/30 bg-gray-900/10">
         <div className="relative">
           <Input
             placeholder="ابحث عن محادثة..."
@@ -49,15 +57,50 @@ export default function ConversationList({
         </div>
       </div>
 
+      {/* الفلاتر السريعة */}
+      <div className="px-4 pb-3 pt-1 border-b border-gray-800/60 bg-gray-900/10 flex gap-2">
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
+            statusFilter === 'active'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
+              : 'bg-gray-850/40 text-gray-500 hover:text-gray-400 border border-transparent'
+          }`}
+        >
+          مفتوح
+        </button>
+        <button
+          onClick={() => setStatusFilter('pending')}
+          className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
+            statusFilter === 'pending'
+              ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30 shadow-sm'
+              : 'bg-gray-850/40 text-gray-500 hover:text-gray-400 border border-transparent'
+          }`}
+        >
+          انتظار
+        </button>
+        <button
+          onClick={() => setStatusFilter('closed')}
+          className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
+            statusFilter === 'closed'
+              ? 'bg-gray-800/50 text-gray-400 border border-gray-700/30 shadow-sm'
+              : 'bg-gray-850/40 text-gray-500 hover:text-gray-400 border border-transparent'
+          }`}
+        >
+          مغلق
+        </button>
+      </div>
+
       {/* قائمة الجلسات */}
       <div className="flex-1 overflow-y-auto divide-y divide-gray-850/30">
         {isLoading && conversations.length === 0 ? (
           <div className="p-8 text-center text-gray-600 text-xs">جارٍ تحميل المحادثات...</div>
-        ) : filtered.map((conv) => {
+        ) : filtered.map((conv, idx) => {
           const isActive = activeConversation?.contactId === conv.contactId;
+          const uniqueKey = conv.id ? `${conv.id}_${idx}` : `${conv.contactId}_${idx}`;
           return (
             <div
-              key={conv.contactId}
+              key={uniqueKey}
               onClick={() => onSelect(conv)}
               className={`p-4 flex items-start gap-3.5 cursor-pointer transition-all duration-200 ${
                 isActive
@@ -65,9 +108,16 @@ export default function ConversationList({
                   : 'hover:bg-gray-900/20 text-gray-400'
               }`}
             >
-              {/* أيقونة المستخدم */}
-              <div className="w-10 h-10 rounded-2xl bg-gray-800 flex items-center justify-center border border-gray-700/50 text-gray-300">
-                <User className="w-4 h-4" />
+              {/* أيقونة المستخدم مع نقطة الحالة الملونة */}
+              <div className="relative shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-gray-800 flex items-center justify-center border border-gray-700/50 text-gray-300">
+                  <User className="w-4 h-4" />
+                </div>
+                {/* نقطة ملونة لحالة العميل */}
+                <span className={`w-2.5 h-2.5 rounded-full border border-gray-950 absolute -bottom-0.5 -left-0.5 ${
+                  statusFilter === 'active' ? 'bg-emerald-500 animate-pulse' :
+                  statusFilter === 'pending' ? 'bg-amber-500' : 'bg-gray-500'
+                }`} />
               </div>
 
               {/* تفاصيل الجلسة */}
@@ -92,7 +142,7 @@ export default function ConversationList({
         })}
 
         {filtered.length === 0 && !isLoading && (
-          <div className="p-8 text-center text-gray-600 text-xs">لا توجد محادثات مطابقة للبحث</div>
+          <div className="p-8 text-center text-gray-650 text-[10px] font-semibold">لا توجد محادثات في هذا التبويب حالياً</div>
         )}
       </div>
     </div>

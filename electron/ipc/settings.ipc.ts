@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import type Store from 'electron-store';
 import { createClient } from '@supabase/supabase-js';
 import Twilio from 'twilio';
+import ws from 'ws';
 
 // تنظيف قيم الإعدادات من الاقتباسات الزائدة
 const cleanValue = (val?: string): string => {
@@ -16,6 +17,9 @@ export function setupSettingsIPC(store: Store) {
       supabase: { url: '', anonKey: '', serviceRoleKey: '' },
       twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
       webhook: { port: 3001, secret: '', enabled: false },
+      employees: [],
+      quickReplies: [],
+      activeEmployeeId: '',
     });
   });
 
@@ -41,7 +45,10 @@ export function setupSettingsIPC(store: Store) {
         port: Number((settings as any).webhook?.port) || 3001,
         secret: cleanValue((settings as any).webhook?.secret),
         enabled: Boolean((settings as any).webhook?.enabled),
-      }
+      },
+      employees: Array.isArray((settings as any).employees) ? (settings as any).employees : [],
+      quickReplies: Array.isArray((settings as any).quickReplies) ? (settings as any).quickReplies : [],
+      activeEmployeeId: cleanValue((settings as any).activeEmployeeId),
     };
 
     store.set('apiSettings', cleaned);
@@ -65,31 +72,29 @@ export function setupSettingsIPC(store: Store) {
         };
       }
 
-      const client = createClient(url, anonKey);
+      const client = createClient(url, anonKey, { realtime: { transport: ws as any } });
 
       // ✅ اختبار آمن — فقط SELECT بدون تعديل
       const { error } = await client
-        .from('_test_connection_dummy_')
-        .select('count')
+        .from('customers')
+        .select('customer_id')
         .limit(1);
 
       const latency = Date.now() - start;
 
-      // حتى لو الجدول غير موجود، الاتصال نجح لأن الخادم استجاب
-      if (error?.code === '42P01' || !error) {
+      // قائمة بالأكواد التي تدل على استجابة قاعدة البيانات (بما فيها الجداول غير الموجودة أو مشاكل الصلاحيات)
+      const isConnected = !error || 
+        error.code === '42P01' || 
+        error.code === 'PGRST104' || 
+        error.code === 'PGRST116' ||
+        error.code === 'PGRST301';
+
+      if (isConnected) {
         return {
           status: 'success',
           message: `✅ الاتصال بـ Supabase ناجح`,
           latency,
           projectUrl: url
-        };
-      }
-
-      if (error?.code === 'PGRST116') {
-        return {
-          status: 'success',
-          message: `✅ الاتصال ناجح (${latency}ms)`,
-          latency
         };
       }
 
