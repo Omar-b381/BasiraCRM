@@ -50,4 +50,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getNextId: () => ipcRenderer.invoke('invoice:getNextId'),
     getShippingRates: () => ipcRenderer.invoke('invoice:getShippingRates'),
   },
+
+  shipping: {
+    getInvoicesForExport: (filters: unknown) =>
+      ipcRenderer.invoke('shipping:getInvoicesForExport', filters),
+    exportExcel: (rows: unknown) =>
+      ipcRenderer.invoke('shipping:exportExcel', rows),
+  },
 });

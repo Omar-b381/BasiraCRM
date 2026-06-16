@@ -35,6 +35,10 @@ export interface IElectronAPI {
     getNextId: () => Promise<any>;
     getShippingRates: () => Promise<any>;
   };
+  shipping: {
+    getInvoicesForExport: (filters: any) => Promise<{ success: boolean; data: any[]; error?: string }>;
+    exportExcel: (rows: any[]) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  };
 }
 
 declare global {

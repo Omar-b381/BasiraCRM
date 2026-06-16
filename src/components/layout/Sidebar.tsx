@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function Sidebar() {
@@ -9,8 +9,9 @@ export default function Sidebar() {
     { name: 'جهات الاتصال', path: '/contacts', icon: Users },
     { name: 'محادثات واتساب', path: '/whatsapp', icon: MessageSquare },
     { name: 'تحليل العملاء RFM', path: '/rfm', icon: BarChart3 },
-    { name: 'الفواتير والطباعة', path: '/invoices', icon: FileText },
-    { name: 'إعدادات النظام', path: '/settings', icon: Settings },
+    { name: 'الفواتير والطباعة',    path: '/invoices',         icon: FileText },
+    { name: 'تصدير الشحن',          path: '/shipping-export',  icon: Truck },
+    { name: 'إعدادات النظام',       path: '/settings',         icon: Settings },
   ];
 
   return (

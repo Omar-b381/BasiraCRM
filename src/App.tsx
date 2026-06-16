@@ -7,6 +7,7 @@ import WhatsApp from './pages/WhatsApp';
 import RFMAnalysis from './pages/RFMAnalysis';
 import InvoiceCreate from './pages/InvoiceCreate';
 import Settings from './pages/Settings';
+import ShippingExport from './pages/ShippingExport';
 import { useSettingsStore } from './store/useSettingsStore';
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="whatsapp" element={<WhatsApp />} />
           <Route path="rfm" element={<RFMAnalysis />} />
           <Route path="invoices" element={<InvoiceCreate />} />
+          <Route path="shipping-export" element={<ShippingExport />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
