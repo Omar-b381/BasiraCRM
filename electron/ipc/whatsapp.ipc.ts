@@ -21,7 +21,8 @@ export function setupWhatsAppIPC(store: Store) {
 
   // تهيئة الاستماع لـ Pusher لاستقبال الرسائل سحابياً بشكل مجاني وفوري
   try {
-    const pusher = new Pusher("95a9339dddab8dc6b6c1", {
+    const PusherClass = (Pusher as any).Pusher || Pusher;
+    const pusher = new PusherClass("95a9339dddab8dc6b6c1", {
       cluster: "mt1"
     });
 
