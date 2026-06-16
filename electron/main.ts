@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'path';
 import Store from 'electron-store';
 import http from 'http';
@@ -25,12 +25,10 @@ async function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false, // ⚠️ أمان — لا تفعّل هذا
+      nodeIntegration: false,
       sandbox: false,
     },
-    titleBarStyle: 'hiddenInset',
     backgroundColor: '#0F172A',
-    icon: path.join(__dirname, '../assets/icon.png'),
     show: false,
     title: 'بصيرة CRM',
   });
@@ -103,6 +101,16 @@ function startLocalMessageServer() {
 }
 
 app.commandLine.appendSwitch('disable-gpu-cache');
+
+// ── التقاط أي خطأ غير متوقع قبل فتح النافذة ──
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+  dialog.showErrorBox('خطأ في التطبيق', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED REJECTION:', reason);
+});
 
 app.whenReady().then(async () => {
   // تسجيل IPC handlers

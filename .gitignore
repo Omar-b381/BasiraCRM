@@ -20,6 +20,7 @@ typings/
 /dist
 /dist-electron
 /release
+/release-prod
 /out
 
 # IDEs and editors
