@@ -14,11 +14,17 @@ export function setupSettingsIPC(store: Store) {
   // دالة مساعدة للحصول على عميل Supabase المحدث
   const getSupabaseClient = () => {
     const settings = store.get('apiSettings') as { supabase?: { url: string; anonKey: string } };
-    const config = settings?.supabase;
-    if (!config?.url || !config?.anonKey) {
-      return null;
+    let url = settings?.supabase?.url;
+    let anonKey = settings?.supabase?.anonKey;
+
+    if (!url || url.trim() === '') {
+      url = 'https://dtklpugpwejrjnkxdkhh.supabase.co';
     }
-    return createClient(config.url.replace(/[”"']/g, '').trim(), config.anonKey.replace(/[”"']/g, '').trim(), {
+    if (!anonKey || anonKey.trim() === '' || anonKey === 'placeholder') {
+      anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y';
+    }
+
+    return createClient(url.replace(/[”"']/g, '').trim(), anonKey.replace(/[”"']/g, '').trim(), {
       auth: { persistSession: false },
       realtime: { transport: ws as any }
     });
@@ -40,6 +46,17 @@ export function setupSettingsIPC(store: Store) {
       quickReplies: [],
       activeEmployeeId: '',
     }) as any;
+
+    // تأكيد الاتصال التلقائي سحابياً كقيم افتراضية إذا كانت فارغة في ملف الإعدادات المحلي
+    if (!local.supabase) {
+      local.supabase = { url: '', anonKey: '', serviceRoleKey: '' };
+    }
+    if (!local.supabase.url || local.supabase.url.trim() === '') {
+      local.supabase.url = 'https://dtklpugpwejrjnkxdkhh.supabase.co';
+    }
+    if (!local.supabase.anonKey || local.supabase.anonKey.trim() === '' || local.supabase.anonKey === 'placeholder') {
+      local.supabase.anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y';
+    }
 
     try {
       const supabase = getSupabaseClient();
