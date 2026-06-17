@@ -10,6 +10,13 @@ export interface TwilioConfig {
   whatsappNumber: string; // بصيغة whatsapp:+XXXXXXXXXXX
 }
 
+export interface MetaConfig {
+  accessToken: string;
+  phoneNumberId: string;
+  whatsappNumber: string;
+  verifyToken: string;
+}
+
 export interface WebhookConfig {
   port: number;
   secret: string;
@@ -26,6 +33,8 @@ export interface Employee {
 export interface AppSettings {
   supabase: SupabaseConfig;
   twilio: TwilioConfig;
+  meta: MetaConfig;
+  activeProvider: 'twilio' | 'meta';
   webhook: WebhookConfig;
   employees?: Employee[];
   quickReplies?: string[];
@@ -34,7 +43,7 @@ export interface AppSettings {
 }
 
 export interface ConnectionTestResult {
-  service: 'supabase' | 'twilio' | 'webhook';
+  service: 'supabase' | 'twilio' | 'meta' | 'webhook';
   status: 'idle' | 'testing' | 'success' | 'failed';
   message: string;
   latency?: number; // ms

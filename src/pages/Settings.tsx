@@ -34,6 +34,8 @@ export default function Settings() {
   const [localSettings, setLocalSettings] = useState<AppSettings>({
     supabase: { url: '', anonKey: '', serviceRoleKey: '' },
     twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
+    meta: { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' },
+    activeProvider: 'twilio',
     webhook: { port: 3001, secret: '', enabled: false },
     employees: [],
     quickReplies: [],
@@ -343,54 +345,149 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* Twilio */}
+          {/* اختيار مزود الخدمة */}
           <section className="glass rounded-3xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
-              <div className="flex items-center gap-2.5">
-                <MessageSquare className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-sm font-bold text-white">إعدادات Twilio API</h2>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => runTest('twilio', localSettings.twilio)}
-                isLoading={tests.twilio?.status === 'testing'}
-                icon={<RefreshCw className="w-3.5 h-3.5" />}
-              >
-                فحص الاتصال
-              </Button>
+            <div className="flex items-center gap-2.5 border-b border-gray-800/60 pb-3">
+              <Shield className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-bold text-white">مزود خدمة الواتساب النشط</h2>
             </div>
-
-            {tests.twilio && (
-              <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
-                tests.twilio.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
-              }`}>
-                {tests.twilio.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-                <span>{tests.twilio.message}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Account SID"
-                value={localSettings.twilio.accountSid}
-                onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, accountSid: e.target.value } }))}
-              />
-              <Input
-                label="Auth Token"
-                type="password"
-                value={localSettings.twilio.authToken}
-                onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, authToken: e.target.value } }))}
-              />
-              <div className="md:col-span-2">
-                <Input
-                  label="رقم واتساب المرسل"
-                  value={localSettings.twilio.whatsappNumber}
-                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, whatsappNumber: e.target.value } }))}
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setLocalSettings(s => ({ ...s, activeProvider: 'twilio' }))}
+                className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
+                  localSettings.activeProvider === 'twilio'
+                    ? 'bg-emerald-950/20 border-emerald-500/30 text-white font-bold'
+                    : 'bg-transparent border-gray-800/40 text-gray-400 hover:border-gray-800 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-6 h-6 text-emerald-400" />
+                <span className="text-xs">Twilio API</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocalSettings(s => ({ ...s, activeProvider: 'meta' }))}
+                className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
+                  localSettings.activeProvider === 'meta'
+                    ? 'bg-indigo-950/20 border-indigo-500/30 text-white font-bold'
+                    : 'bg-transparent border-gray-800/40 text-gray-400 hover:border-gray-800 hover:text-white'
+                }`}
+              >
+                <Database className="w-6 h-6 text-indigo-400" />
+                <span className="text-xs">Meta WhatsApp Cloud API</span>
+              </button>
             </div>
           </section>
+
+          {/* Twilio */}
+          {localSettings.activeProvider === 'twilio' && (
+            <section className="glass rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-sm font-bold text-white">إعدادات Twilio API</h2>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => runTest('twilio', localSettings.twilio)}
+                  isLoading={tests.twilio?.status === 'testing'}
+                  icon={<RefreshCw className="w-3.5 h-3.5" />}
+                >
+                  فحص الاتصال
+                </Button>
+              </div>
+
+              {tests.twilio && (
+                <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  tests.twilio.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
+                }`}>
+                  {tests.twilio.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                  <span>{tests.twilio.message}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Account SID"
+                  value={localSettings.twilio.accountSid}
+                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, accountSid: e.target.value } }))}
+                />
+                <Input
+                  label="Auth Token"
+                  type="password"
+                  value={localSettings.twilio.authToken}
+                  onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, authToken: e.target.value } }))}
+                />
+                <div className="md:col-span-2">
+                  <Input
+                    label="رقم واتساب المرسل"
+                    value={localSettings.twilio.whatsappNumber}
+                    onChange={(e) => setLocalSettings(s => ({ ...s, twilio: { ...s.twilio, whatsappNumber: e.target.value } }))}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Meta Cloud API */}
+          {localSettings.activeProvider === 'meta' && (
+            <section className="glass rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <Database className="w-5 h-5 text-indigo-400" />
+                  <h2 className="text-sm font-bold text-white">إعدادات Meta WhatsApp Cloud API</h2>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => runTest('meta', localSettings.meta)}
+                  isLoading={tests.meta?.status === 'testing'}
+                  icon={<RefreshCw className="w-3.5 h-3.5" />}
+                >
+                  فحص الاتصال
+                </Button>
+              </div>
+
+              {tests.meta && (
+                <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  tests.meta.status === 'success' ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/10' : 'bg-red-950/20 text-red-400 border border-red-500/10'
+                }`}>
+                  {tests.meta.status === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                  <span>{tests.meta.message}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Input
+                    label="Meta Access Token (رمز الوصول)"
+                    type="password"
+                    value={localSettings.meta?.accessToken || ''}
+                    onChange={(e) => setLocalSettings(s => ({ ...s, meta: { ...(s.meta || { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' }), accessToken: e.target.value } }))}
+                  />
+                </div>
+                <Input
+                  label="Phone Number ID (معرّف رقم الهاتف)"
+                  value={localSettings.meta?.phoneNumberId || ''}
+                  onChange={(e) => setLocalSettings(s => ({ ...s, meta: { ...(s.meta || { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' }), phoneNumberId: e.target.value } }))}
+                />
+                <Input
+                  label="رقم واتساب المرسل (بدون + أو علامة)"
+                  value={localSettings.meta?.whatsappNumber || ''}
+                  placeholder="مثال: 201200000000"
+                  onChange={(e) => setLocalSettings(s => ({ ...s, meta: { ...(s.meta || { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' }), whatsappNumber: e.target.value } }))}
+                />
+                <div className="md:col-span-2">
+                  <Input
+                    label="Webhook Verify Token (رمز تحقق الويب هوك)"
+                    value={localSettings.meta?.verifyToken || ''}
+                    onChange={(e) => setLocalSettings(s => ({ ...s, meta: { ...(s.meta || { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' }), verifyToken: e.target.value } }))}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Webhook */}
           <section className="glass rounded-3xl p-6 space-y-4">

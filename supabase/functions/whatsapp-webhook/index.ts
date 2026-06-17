@@ -178,60 +178,105 @@ async function saveMessage(params: SaveMessageParams): Promise<void> {
     externalId, timestamp, mediaUrl, rawPayload,
   } = params;
 
+  const cleanPhone = contactPhone.replace("whatsapp:", "").replace("+", "").trim();
+
   // 1️⃣ ابحث عن جهة اتصال موجودة
-  let contactId: string | null = null;
+  let customerId: string | null = null;
 
   const { data: existingContacts } = await supabase
     .from("customers")
-    .select("customer_id, customer_name")
-    .or(`phone.eq.${contactPhone},customer_phone_2.eq.${contactPhone}`)
+    .select("customer_id, name")
+    .or(`phone.eq.${cleanPhone},customer_phone_2.eq.${cleanPhone}`)
     .limit(1);
 
   if (existingContacts && existingContacts.length > 0) {
-    contactId = existingContacts[0].customer_id;
+    customerId = existingContacts[0].customer_id;
   } else {
     // 2️⃣ أنشئ جهة اتصال جديدة تلقائياً
+    const newCustId = 'CUST_' + Math.floor(Math.random() * 10000);
     const { data: newContact, error: contactError } = await supabase
       .from("customers")
       .insert({
-        customer_name:  contactName,
-        phone:          contactPhone,
+        customer_id:    newCustId,
+        name:           contactName,
+        phone:          cleanPhone,
         created_at:     timestamp,
-        updated_at:     timestamp,
-        purchase_count: 0,
-        total_spend:    0,
       })
       .select("customer_id")
       .single();
 
     if (contactError) {
       console.error("❌ فشل إنشاء جهة الاتصال:", contactError.message);
+      customerId = newCustId;
     } else {
-      contactId = newContact?.customer_id ?? null;
-      console.log(`✅ تم إنشاء جهة اتصال جديدة: ${contactName} (${contactPhone})`);
+      customerId = newContact?.customer_id ?? newCustId;
+      console.log(`✅ تم إنشاء جهة اتصال جديدة: ${contactName} (${cleanPhone})`);
     }
   }
 
-  // 3️⃣ احفظ الرسالة
+  // 3️⃣ ابحث عن المحادثة أو أنشئها
+  let conversationId: number | null = null;
+  const { data: existingConv } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  if (existingConv) {
+    conversationId = existingConv.id;
+  } else {
+    // الحصول على معرف المزود من جدول whatsapp_providers
+    const { data: provider } = await supabase
+      .from("whatsapp_providers")
+      .select("id")
+      .eq("type", platform)
+      .limit(1)
+      .maybeSingle();
+
+    const providerId = provider?.id || null;
+
+    // إدراج محادثة جديدة
+    const { data: newConv, error: convError } = await supabase
+      .from("conversations")
+      .insert({
+        customer_id: customerId,
+        provider_id: providerId,
+        status: "active",
+        last_message_at: timestamp,
+      })
+      .select("id")
+      .single();
+
+    if (convError) {
+      console.error("❌ فشل إنشاء المحادثة:", convError.message);
+      return;
+    }
+    conversationId = newConv.id;
+  }
+
+  // 4️⃣ احفظ الرسالة في جدول messages
   const { error: msgError } = await supabase
-    .from("whatsapp_messages")
+    .from("messages")
     .insert({
-      contact_id:    contactId,
-      contact_phone: contactPhone,
-      direction:     direction,
-      body:          body,
-      status:        "delivered",
-      message_type:  messageType,
-      twilio_sid:    platform === "twilio" ? externalId : null,
-      media_url:     mediaUrl ?? null,
-      timestamp:     timestamp,
-      read_at:       null,
+      conversation_id: conversationId,
+      direction:       direction,
+      content:         body,
+      message_type:    messageType === "image" ? "image" : "text",
+      status:          "delivered",
+      provider_msg_id: externalId,
+      sent_at:         timestamp,
     });
 
   if (msgError) {
     console.error("❌ فشل حفظ الرسالة:", msgError.message);
   } else {
-    console.log(`📨 [${platform.toUpperCase()}] رسالة جديدة من ${contactPhone}: "${body.substring(0, 50)}"`);
+    // تحديث توقيت آخر رسالة للمحادثة
+    await supabase
+      .from("conversations")
+      .update({ last_message_at: timestamp })
+      .eq("id", conversationId);
+
+    console.log(`📨 [${platform.toUpperCase()}] رسالة جديدة من ${cleanPhone}: "${body.substring(0, 50)}"`);
   }
 }
 

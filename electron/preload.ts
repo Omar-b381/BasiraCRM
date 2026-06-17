@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testConnection: {
     supabase: (config: unknown) => ipcRenderer.invoke('test:supabase', config),
     twilio: (config: unknown) => ipcRenderer.invoke('test:twilio', config),
+    meta: (config: unknown) => ipcRenderer.invoke('test:meta', config),
     webhook: () => ipcRenderer.invoke('test:webhook'),
   },
 

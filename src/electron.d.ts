@@ -6,6 +6,7 @@ export interface IElectronAPI {
   testConnection: {
     supabase: (config: any) => Promise<any>;
     twilio: (config: any) => Promise<any>;
+    meta: (config: any) => Promise<any>;
     webhook: () => Promise<any>;
   };
   whatsapp: {

@@ -11,12 +11,15 @@ interface SettingsState {
   saveSettings: (settings: AppSettings) => Promise<boolean>;
   testSupabase: (config: AppSettings['supabase']) => Promise<ConnectionTestResult>;
   testTwilio: (config: AppSettings['twilio']) => Promise<ConnectionTestResult>;
+  testMeta: (config: AppSettings['meta']) => Promise<ConnectionTestResult>;
   testWebhook: () => Promise<ConnectionTestResult>;
 }
 
 const defaultSettings: AppSettings = {
   supabase: { url: '', anonKey: '', serviceRoleKey: '' },
   twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
+  meta: { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' },
+  activeProvider: 'twilio',
   webhook: { port: 3001, secret: '', enabled: false },
 };
 
@@ -70,6 +73,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   testTwilio: async (config) => {
     return window.electronAPI.testConnection.twilio(config);
+  },
+
+  testMeta: async (config) => {
+    return window.electronAPI.testConnection.meta(config);
   },
 
   testWebhook: async () => {

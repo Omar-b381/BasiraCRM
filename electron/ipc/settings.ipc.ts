@@ -29,6 +29,8 @@ export function setupSettingsIPC(store: Store) {
     const local = store.get('apiSettings', {
       supabase: { url: '', anonKey: '', serviceRoleKey: '' },
       twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
+      meta: { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' },
+      activeProvider: 'twilio',
       webhook: { port: 3001, secret: '', enabled: false },
       employees: [],
       quickReplies: [],
@@ -38,25 +40,49 @@ export function setupSettingsIPC(store: Store) {
     try {
       const supabase = getSupabaseClient();
       if (supabase) {
-        const { data: provider } = await supabase
+        const { data: providers } = await supabase
           .from('whatsapp_providers')
-          .select('*')
-          .eq('type', 'twilio')
-          .limit(1)
-          .maybeSingle();
+          .select('*');
 
-        if (provider) {
-          local.twilio = {
-            accountSid: provider.api_url || '',
-            authToken: provider.api_key || '',
-            whatsappNumber: provider.phone_number || '',
-          };
-          if (provider.config_json) {
-            local.webhook = {
-              port: provider.config_json.webhook_port || local.webhook?.port || 3001,
-              secret: provider.config_json.webhook_secret || local.webhook?.secret || '',
-              enabled: provider.config_json.webhook_enabled !== undefined ? provider.config_json.webhook_enabled : (local.webhook?.enabled || false),
+        if (providers && providers.length > 0) {
+          const twilioProvider = providers.find(p => p.type === 'twilio');
+          const metaProvider = providers.find(p => p.type === 'meta');
+
+          if (twilioProvider) {
+            local.twilio = {
+              accountSid: twilioProvider.api_url || '',
+              authToken: twilioProvider.api_key || '',
+              whatsappNumber: twilioProvider.phone_number || '',
             };
+            if (twilioProvider.is_active) {
+              local.activeProvider = 'twilio';
+            }
+            if (twilioProvider.config_json) {
+              local.webhook = {
+                port: twilioProvider.config_json.webhook_port || local.webhook?.port || 3001,
+                secret: twilioProvider.config_json.webhook_secret || local.webhook?.secret || '',
+                enabled: twilioProvider.config_json.webhook_enabled !== undefined ? twilioProvider.config_json.webhook_enabled : (local.webhook?.enabled || false),
+              };
+            }
+          }
+
+          if (metaProvider) {
+            local.meta = {
+              accessToken: metaProvider.api_key || '',
+              phoneNumberId: metaProvider.api_url || '',
+              whatsappNumber: metaProvider.phone_number || '',
+              verifyToken: metaProvider.config_json?.verify_token || '',
+            };
+            if (metaProvider.is_active) {
+              local.activeProvider = 'meta';
+            }
+            if (metaProvider.config_json && !local.webhook?.secret) {
+              local.webhook = {
+                port: metaProvider.config_json.webhook_port || local.webhook?.port || 3001,
+                secret: metaProvider.config_json.webhook_secret || local.webhook?.secret || '',
+                enabled: metaProvider.config_json.webhook_enabled !== undefined ? metaProvider.config_json.webhook_enabled : (local.webhook?.enabled || false),
+              };
+            }
           }
         }
       }
@@ -85,6 +111,13 @@ export function setupSettingsIPC(store: Store) {
         authToken: cleanValue((settings as any).twilio?.authToken),
         whatsappNumber: cleanValue((settings as any).twilio?.whatsappNumber),
       },
+      meta: {
+        accessToken: cleanValue((settings as any).meta?.accessToken),
+        phoneNumberId: cleanValue((settings as any).meta?.phoneNumberId),
+        whatsappNumber: cleanValue((settings as any).meta?.whatsappNumber),
+        verifyToken: cleanValue((settings as any).meta?.verifyToken),
+      },
+      activeProvider: (settings as any).activeProvider || 'twilio',
       webhook: {
         port: Number((settings as any).webhook?.port) || 3001,
         secret: cleanValue((settings as any).webhook?.secret),
@@ -105,13 +138,15 @@ export function setupSettingsIPC(store: Store) {
           auth: { persistSession: false },
           realtime: { transport: ws as any }
         });
+        
+        // Twilio Data
         const twilioData = {
           name: 'twilio',
           type: 'twilio',
           api_key: cleaned.twilio.authToken,
           api_url: cleaned.twilio.accountSid,
           phone_number: cleaned.twilio.whatsappNumber,
-          is_active: true,
+          is_active: cleaned.activeProvider === 'twilio',
           config_json: {
             account_sid: cleaned.twilio.accountSid,
             from_number: cleaned.twilio.whatsappNumber,
@@ -121,22 +156,57 @@ export function setupSettingsIPC(store: Store) {
           }
         };
 
-        const { data: existing } = await supabase
+        const { data: existingTwilio } = await supabase
           .from('whatsapp_providers')
           .select('id')
           .eq('type', 'twilio')
           .limit(1)
           .maybeSingle();
 
-        if (existing) {
+        if (existingTwilio) {
           await supabase
             .from('whatsapp_providers')
             .update(twilioData)
-            .eq('id', existing.id);
+            .eq('id', existingTwilio.id);
         } else {
           await supabase
             .from('whatsapp_providers')
             .insert(twilioData);
+        }
+
+        // Meta Data
+        const metaData = {
+          name: 'meta',
+          type: 'meta',
+          api_key: cleaned.meta.accessToken,
+          api_url: cleaned.meta.phoneNumberId,
+          phone_number: cleaned.meta.whatsappNumber,
+          is_active: cleaned.activeProvider === 'meta',
+          config_json: {
+            phone_number_id: cleaned.meta.phoneNumberId,
+            verify_token: cleaned.meta.verifyToken,
+            webhook_secret: cleaned.webhook.secret,
+            webhook_port: cleaned.webhook.port,
+            webhook_enabled: cleaned.webhook.enabled
+          }
+        };
+
+        const { data: existingMeta } = await supabase
+          .from('whatsapp_providers')
+          .select('id')
+          .eq('type', 'meta')
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMeta) {
+          await supabase
+            .from('whatsapp_providers')
+            .update(metaData)
+            .eq('id', existingMeta.id);
+        } else {
+          await supabase
+            .from('whatsapp_providers')
+            .insert(metaData);
         }
       }
     } catch (err) {
@@ -251,6 +321,56 @@ export function setupSettingsIPC(store: Store) {
         status: 'failed',
         message: `❌ فشل الاتصال: ${errMsg}`,
         latency
+      };
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // فحص اتصال Meta WhatsApp Cloud API
+  // ═══════════════════════════════════════════
+  ipcMain.handle('test:meta', async (_, config) => {
+    const start = Date.now();
+    try {
+      const accessToken = cleanValue(config?.accessToken);
+      const phoneNumberId = cleanValue(config?.phoneNumberId);
+
+      if (!accessToken || !phoneNumberId) {
+        return {
+          status: 'failed',
+          message: 'يرجى إدخال Access Token و Phone Number ID',
+          latency: 0
+        };
+      }
+
+      const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      const latency = Date.now() - start;
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          status: 'success',
+          message: `✅ اتصال Meta Cloud API ناجح. الهاتف: ${data.display_phone_number || phoneNumberId}`,
+          latency
+        };
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        const errDetail = errData?.error?.message || `كود الخطأ: ${response.status}`;
+        return {
+          status: 'failed',
+          message: `❌ فشل الاتصال بـ Meta: ${errDetail}`,
+          latency
+        };
+      }
+    } catch (err: unknown) {
+      return {
+        status: 'failed',
+        message: `❌ خطأ في الاتصال بالشبكة: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`,
+        latency: Date.now() - start
       };
     }
   });
