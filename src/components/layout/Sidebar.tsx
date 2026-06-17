@@ -1,18 +1,29 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck } from 'lucide-react';
-import { clsx } from 'clsx';
+import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck, ClipboardCheck, LogOut } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function Sidebar() {
+  const { currentEmployee, logout } = useAuthStore();
+
   const menuItems = [
-    { name: 'لوحة التحكم', path: '/', icon: LayoutDashboard },
-    { name: 'جهات الاتصال', path: '/contacts', icon: Users },
-    { name: 'محادثات واتساب', path: '/whatsapp', icon: MessageSquare },
-    { name: 'تحليل العملاء RFM', path: '/rfm', icon: BarChart3 },
-    { name: 'الفواتير والطباعة',    path: '/invoices',         icon: FileText },
-    { name: 'تصدير الشحن',          path: '/shipping-export',  icon: Truck },
-    { name: 'إعدادات النظام',       path: '/settings',         icon: Settings },
+    { name: 'لوحة التحكم', path: '/', icon: LayoutDashboard, requiredPermission: 'view_reports' },
+    { name: 'جهات الاتصال', path: '/contacts', icon: Users, requiredPermission: 'send_messages' },
+    { name: 'محادثات واتساب', path: '/whatsapp', icon: MessageSquare, requiredPermission: 'send_messages' },
+    { name: 'تحليل العملاء RFM', path: '/rfm', icon: BarChart3, requiredPermission: 'view_reports' },
+    { name: 'الفواتير والطباعة',    path: '/invoices',         icon: FileText, requiredPermission: 'edit_invoices' },
+    { name: 'تصدير الشحن',          path: '/shipping-export',  icon: Truck, requiredPermission: 'edit_invoices' },
+    { name: 'متابعة ومطابقة الشحنات', path: '/order-tracking',  icon: ClipboardCheck, requiredPermission: 'edit_invoices' },
+    { name: 'إعدادات النظام',       path: '/settings',         icon: Settings, requiredPermission: 'manage_settings' },
   ];
+
+  // Filter items by employee permissions
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!currentEmployee) return false;
+    // Admin has access to everything
+    if (currentEmployee.role === 'admin') return true;
+    return currentEmployee.permissions?.includes(item.requiredPermission);
+  });
 
   return (
     <aside
@@ -42,7 +53,7 @@ export default function Sidebar() {
 
       {/* عناصر القائمة */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -91,15 +102,38 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* الفوتر الجانبي */}
-      <div
-        className="p-4 border-t text-center"
-        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
-      >
-        <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.30)' }}>
-          بصيرة CRM v1.0.0
-        </p>
-      </div>
+      {/* معلومات الموظف وزر تسجيل الخروج */}
+      {currentEmployee && (
+        <div
+          className="p-4 border-t space-y-3"
+          style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+        >
+          <div className="flex items-center justify-between gap-2 text-right">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">{currentEmployee.name}</p>
+              <p className="text-[10px] text-gray-400 font-semibold truncate mt-0.5">
+                {currentEmployee.role === 'admin'
+                  ? 'مدير النظام 👑'
+                  : currentEmployee.role === 'supervisor'
+                  ? 'مشرف 🛡️'
+                  : 'موظف دعم 💬'}
+              </p>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="تسجيل الخروج"
+              className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              بصيرة CRM v1.0.0
+            </p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

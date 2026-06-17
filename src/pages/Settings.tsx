@@ -50,6 +50,8 @@ export default function Settings() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeEmpId, setActiveEmpId] = useState('');
   const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpUsername, setNewEmpUsername] = useState('');
+  const [newEmpPassword, setNewEmpPassword] = useState('');
   const [newEmpRole, setNewEmpRole] = useState<'admin' | 'supervisor' | 'agent'>('agent');
   const [newEmpPerms, setNewEmpPerms] = useState<string[]>(['send_messages']);
 
@@ -141,28 +143,77 @@ export default function Settings() {
   // ==========================================
   // دوال إدارة الموظفين
   // ==========================================
-  const handleAddEmployee = () => {
-    if (!newEmpName.trim()) return;
+  const handleAddEmployee = async () => {
+    if (!newEmpName.trim() || !newEmpUsername.trim() || !newEmpPassword.trim()) {
+      showTemporarySuccess('❌ يرجى تعبئة جميع الحقول: الاسم، اسم المستخدم، وكلمة المرور');
+      return;
+    }
     const newEmp: Employee = {
       id: 'EMP_' + Math.floor(Math.random() * 10000),
       name: newEmpName.trim(),
+      username: newEmpUsername.trim(),
+      password: newEmpPassword.trim(),
       role: newEmpRole,
       permissions: newEmpPerms
     };
-    const updated = [...employees, newEmp];
-    setEmployees(updated);
-    setNewEmpName('');
-    showTemporarySuccess('تم إضافة الموظف بنجاح');
+
+    try {
+      // 1. حفظ الموظف سحابياً في جدول system_employees
+      const { error: dbErr } = await supabase
+        .from('system_employees')
+        .insert({
+          id: newEmp.id,
+          name: newEmp.name,
+          username: newEmp.username,
+          password: newEmp.password,
+          role: newEmp.role,
+          permissions: newEmp.permissions
+        });
+
+      if (dbErr) {
+        showTemporarySuccess('❌ فشل حفظ الموظف في السحابة: ' + dbErr.message);
+        return;
+      }
+
+      // 2. تحديث الحالة المحلية
+      const updated = [...employees, newEmp];
+      setEmployees(updated);
+      setNewEmpName('');
+      setNewEmpUsername('');
+      setNewEmpPassword('');
+      showTemporarySuccess('تم إضافة الموظف بنجاح سحابياً ومحلياً');
+    } catch (err) {
+      console.error(err);
+      showTemporarySuccess('❌ حدث خطأ غير متوقع أثناء الحفظ سحابياً');
+    }
   };
 
-  const handleDeleteEmployee = (empId: string) => {
+  const handleDeleteEmployee = async (empId: string) => {
     if (empId === activeEmpId) {
       showTemporarySuccess('⚠️ لا يمكن حذف الموظف النشط حالياً');
       return;
     }
-    const updated = employees.filter(e => e.id !== empId);
-    setEmployees(updated);
-    showTemporarySuccess('تم حذف الموظف');
+
+    try {
+      // 1. حذف الموظف سحابياً من جدول system_employees
+      const { error: dbErr } = await supabase
+        .from('system_employees')
+        .delete()
+        .eq('id', empId);
+
+      if (dbErr) {
+        showTemporarySuccess('❌ فشل حذف الموظف من السحابة: ' + dbErr.message);
+        return;
+      }
+
+      // 2. تحديث الحالة المحلية
+      const updated = employees.filter(e => e.id !== empId);
+      setEmployees(updated);
+      showTemporarySuccess('تم حذف الموظف بنجاح');
+    } catch (err) {
+      console.error(err);
+      showTemporarySuccess('❌ حدث خطأ غير متوقع أثناء الحذف من السحابة');
+    }
   };
 
   const handleTogglePermission = (perm: string) => {
@@ -621,6 +672,21 @@ export default function Settings() {
                 placeholder="مثال: عمر البشير"
                 value={newEmpName}
                 onChange={(e) => setNewEmpName(e.target.value)}
+              />
+
+              <Input
+                label="اسم المستخدم (Username)"
+                placeholder="مثال: omar"
+                value={newEmpUsername}
+                onChange={(e) => setNewEmpUsername(e.target.value)}
+              />
+
+              <Input
+                label="كلمة المرور (Password)"
+                placeholder="مثال: 123456"
+                type="password"
+                value={newEmpPassword}
+                onChange={(e) => setNewEmpPassword(e.target.value)}
               />
 
               <div className="space-y-1">

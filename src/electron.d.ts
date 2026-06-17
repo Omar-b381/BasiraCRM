@@ -39,6 +39,9 @@ export interface IElectronAPI {
   shipping: {
     getInvoicesForExport: (filters: any) => Promise<{ success: boolean; data: any[]; error?: string }>;
     exportExcel: (rows: any[]) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+    parseExcelForTracking: () => Promise<{ success: boolean; data?: any[]; error?: string }>;
+    updateStatuses: (updates: Array<{ invoiceId: number; status: string }>) => Promise<{ success: boolean; error?: string }>;
+    getDbStats: () => Promise<{ success: boolean; stats?: any; error?: string }>;
   };
 }
 

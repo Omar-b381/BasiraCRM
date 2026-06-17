@@ -57,5 +57,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('shipping:getInvoicesForExport', filters),
     exportExcel: (rows: unknown) =>
       ipcRenderer.invoke('shipping:exportExcel', rows),
+    parseExcelForTracking: () =>
+      ipcRenderer.invoke('shipping:parseExcelForTracking'),
+    updateStatuses: (updates: unknown) =>
+      ipcRenderer.invoke('shipping:updateStatuses', updates),
+    getDbStats: () =>
+      ipcRenderer.invoke('shipping:getDbStats'),
   },
 });

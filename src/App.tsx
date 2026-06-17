@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
@@ -8,28 +8,59 @@ import RFMAnalysis from './pages/RFMAnalysis';
 import InvoiceCreate from './pages/InvoiceCreate';
 import Settings from './pages/Settings';
 import ShippingExport from './pages/ShippingExport';
+import OrderTracking from './pages/OrderTracking';
+import Login from './pages/Login';
 import { useSettingsStore } from './store/useSettingsStore';
+import { useAuthStore } from './store/useAuthStore';
+
+const IndexRedirect = () => {
+  const { currentEmployee } = useAuthStore();
+  if (!currentEmployee) return <div className="p-8 text-white text-center">جاري التحميل...</div>;
+  if (currentEmployee.role === 'admin' || currentEmployee.permissions?.includes('view_reports')) {
+    return <Dashboard />;
+  }
+  if (currentEmployee.permissions?.includes('send_messages')) {
+    return <WhatsApp />;
+  }
+  if (currentEmployee.permissions?.includes('edit_invoices')) {
+    return <InvoiceCreate />;
+  }
+  return <div className="p-8 text-white font-bold text-center">عذراً، لا تمتلك صلاحيات كافية لتصفح النظام.</div>;
+};
 
 export default function App() {
   const { fetchSettings } = useSettingsStore();
+  const { isLoggedIn, currentEmployee } = useAuthStore();
 
   // تحميل الإعدادات المسجلة للاتصال بالـ APIs عند تشغيل التطبيق
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
 
+  if (!isLoggedIn) {
+    return <Login />;
+  }
+
+  const hasPermission = (permission: string) => {
+    if (!currentEmployee) return false;
+    if (currentEmployee.role === 'admin') return true;
+    return currentEmployee.permissions?.includes(permission);
+  };
+
   return (
     <HashRouter>
       <Routes>
         {/* التوجيه الرئيسي الذى يلتف حوله الـ Layout */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="contacts" element={<Contacts />} />
-          <Route path="whatsapp" element={<WhatsApp />} />
-          <Route path="rfm" element={<RFMAnalysis />} />
-          <Route path="invoices" element={<InvoiceCreate />} />
-          <Route path="shipping-export" element={<ShippingExport />} />
-          <Route path="settings" element={<Settings />} />
+          <Route index element={<IndexRedirect />} />
+          {hasPermission('send_messages') && <Route path="contacts" element={<Contacts />} />}
+          {hasPermission('send_messages') && <Route path="whatsapp" element={<WhatsApp />} />}
+          {hasPermission('view_reports') && <Route path="rfm" element={<RFMAnalysis />} />}
+          {hasPermission('edit_invoices') && <Route path="invoices" element={<InvoiceCreate />} />}
+          {hasPermission('edit_invoices') && <Route path="shipping-export" element={<ShippingExport />} />}
+          {hasPermission('edit_invoices') && <Route path="order-tracking" element={<OrderTracking />} />}
+          {hasPermission('manage_settings') && <Route path="settings" element={<Settings />} />}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </HashRouter>

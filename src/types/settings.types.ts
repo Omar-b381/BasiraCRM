@@ -26,6 +26,8 @@ export interface WebhookConfig {
 export interface Employee {
   id: string;
   name: string;
+  username: string;
+  password?: string;
   role: 'admin' | 'supervisor' | 'agent';
   permissions: string[];
 }

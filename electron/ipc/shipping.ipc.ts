@@ -280,4 +280,212 @@ export function setupShippingIPC(store: Store) {
       };
     }
   });
+
+  // ═══════════════════════════════════════════════════════
+  // 🔍 مطابقة ملف Excel لشركة الشحن
+  // ═══════════════════════════════════════════════════════
+  ipcMain.handle('shipping:parseExcelForTracking', async () => {
+    try {
+      const { filePaths, canceled } = await dialog.showOpenDialog({
+        title: 'اختر ملف شركة الشحن للمطابقة',
+        filters: [{ name: 'Excel Files', extensions: ['xlsx', 'xls'] }],
+        properties: ['openFile'],
+      });
+
+      if (canceled || filePaths.length === 0) {
+        return { success: false, error: 'تم إلغاء اختيار الملف' };
+      }
+
+      const filePath = filePaths[0];
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      const sheet = workbook.worksheets[0];
+
+      if (!sheet || sheet.rowCount < 2) {
+        return { success: false, error: 'الملف فارغ أو غير صالح' };
+      }
+
+      // البحث عن أعمدة: رقم الطلب، رقم البوليصة، حالة الشحنة
+      const headerRow = sheet.getRow(1);
+      let orderIdCol = -1;
+      let trackingCol = -1;
+      let statusCol = -1;
+
+      headerRow.eachCell((cell, colNumber) => {
+        const val = String(cell.value || '').trim();
+        if (val === 'رقم الطلب') orderIdCol = colNumber;
+        else if (val === 'رقم البوليصة') trackingCol = colNumber;
+        else if (val === 'حالة الشحنة') statusCol = colNumber;
+      });
+
+      // fallback في حال لم يجد المسميات الدقيقة
+      if (orderIdCol === -1) orderIdCol = 14; // الافتراضي العمود 14
+      if (trackingCol === -1) trackingCol = 1;  // الافتراضي العمود 1
+      if (statusCol === -1) statusCol = 21;    // الافتراضي العمود 21
+
+      const parsedRows: any[] = [];
+      const orderIds: number[] = [];
+
+      for (let i = 2; i <= sheet.rowCount; i++) {
+        const row = sheet.getRow(i);
+        const orderIdVal = row.getCell(orderIdCol).value;
+        const trackingCode = String(row.getCell(trackingCol).value || '').trim();
+        const excelStatus = String(row.getCell(statusCol).value || '').trim();
+
+        if (!orderIdVal) continue;
+        const orderId = Number(orderIdVal);
+        if (isNaN(orderId)) continue;
+
+        parsedRows.push({
+          orderId,
+          trackingCode,
+          excelStatus,
+        });
+        orderIds.push(orderId);
+      }
+
+      if (orderIds.length === 0) {
+        return { success: false, error: 'لم يتم العثور على أرقام طلبات صالحة في الملف' };
+      }
+
+      // جلب الفواتير المطابقة من قاعدة البيانات
+      const client = getClient();
+      const { data: invoices, error } = await client
+        .from('invoices')
+        .select('invoice_id, customer_name, status')
+        .in('invoice_id', orderIds);
+
+      if (error) throw error;
+
+      const dbMap = new Map<number, any>();
+      if (invoices) {
+        invoices.forEach(inv => dbMap.set(Number(inv.invoice_id), inv));
+      }
+
+      // دمج واقتراح الحالات
+      const result = parsedRows.map(row => {
+        const dbOrder = dbMap.get(row.orderId);
+        
+        // مطابقة الحالة المباشرة كما هي في ملف Excel
+        const proposedStatus = row.excelStatus || 'معلقة';
+
+        return {
+          orderId: row.orderId,
+          trackingCode: row.trackingCode,
+          excelStatus: row.excelStatus,
+          crmStatus: dbOrder ? dbOrder.status : null,
+          customerName: dbOrder ? dbOrder.customer_name : 'غير موجود في النظام',
+          proposedStatus: proposedStatus,
+        };
+      });
+
+      return { success: true, data: result };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل تحليل ملف المطابقة',
+      };
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // 💾 تحديث الحالات دفعياً
+  // ═══════════════════════════════════════════════════════
+  ipcMain.handle('shipping:updateStatuses', async (_, updates: Array<{ invoiceId: number; status: string }>) => {
+    try {
+      if (!updates || updates.length === 0) {
+        return { success: false, error: 'لا توجد تحديثات لتطبيقها' };
+      }
+
+      const client = getClient();
+      
+      // نقوم بالتحديث دفعياً لتجنب إجهاد الشبكة (Port/Socket Exhaustion) أو حظر الاتصال من Supabase
+      const BATCH_SIZE = 15;
+      for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+        const batch = updates.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (u) => {
+            const { error } = await client
+              .from('invoices')
+              .update({ status: u.status })
+              .eq('invoice_id', u.invoiceId);
+            
+            if (error) {
+              throw new Error(`فشل تحديث الفاتورة ${u.invoiceId}: ${error.message}`);
+            }
+          })
+        );
+        // تأخير بسيط بين كل دفعة وأخرى
+        await new Promise((resolve) => setTimeout(resolve, 85));
+      }
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل تحديث حالات الطلبات',
+      };
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // 📊 جلب إحصائيات قاعدة البيانات بأكملها (KPIs)
+  // ═══════════════════════════════════════════════════════
+  ipcMain.handle('shipping:getDbStats', async () => {
+    try {
+      const client = getClient();
+      
+      const { count: total, error: errTotal } = await client
+        .from('invoices')
+        .select('*', { count: 'exact', head: true });
+      if (errTotal) throw errTotal;
+
+      const deliveredStatuses = ['تم التسليم', 'تسليم ناجح', 'تسليم جزئي'];
+      const shippingStatuses = [
+        'تم الشحن', 'قيد التوصيل', 'تم الاستلام في المخزن', 'استبدال او استلام طرد',
+        'في الطريق للمخزن', 'جاري توصيل الاوردر', 'في الطريق للراسل', 'محاولة تشغيل'
+      ];
+      const pendingStatuses = ['قيد الانتظار', 'مؤكدة', 'طلب بيك أب', 'التعبئة', '(جديد)'];
+      const returnedStatuses = ['مرتجعة', 'تم الارتجاع للراسل', 'تم الارتجاع للمخزن', 'تقفيل مرتجع'];
+
+      const { count: delivered, error: errDelivered } = await client
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .in('status', deliveredStatuses);
+      if (errDelivered) throw errDelivered;
+
+      const { count: shipping, error: errShipping } = await client
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .in('status', shippingStatuses);
+      if (errShipping) throw errShipping;
+
+      const { count: pending, error: errPending } = await client
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .in('status', pendingStatuses);
+      if (errPending) throw errPending;
+
+      const { count: returned, error: errReturned } = await client
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .in('status', returnedStatuses);
+      if (errReturned) throw errReturned;
+
+      const stats = {
+        total: total || 0,
+        delivered: delivered || 0,
+        shipping: shipping || 0,
+        pending: pending || 0,
+        returned: returned || 0,
+      };
+
+      return { success: true, stats };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل جلب إحصائيات قاعدة البيانات',
+      };
+    }
+  });
 }
+
