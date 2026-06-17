@@ -373,12 +373,12 @@ export function setupInvoiceIPC(store: Store) {
   ipcMain.handle('invoice:generatePdf', async (_, invoiceData) => {
     let pdfWindow: BrowserWindow | null = null;
     try {
-      const html = buildInvoiceHtml(invoiceData);
+      const settings = store.get('apiSettings') as any;
+      const html = buildInvoiceHtml(invoiceData, settings?.printSettings);
 
-      // نافذة خفية مخصصة للطباعة فقط
+      // نافذة خفية مخصصة للطباعة فقط (بدون offscreen لتجنب مشاكل Chromium في طباعة الـ PDF)
       pdfWindow = new BrowserWindow({
         show: false,
-        webPreferences: { offscreen: true },
       });
 
       await pdfWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`);
@@ -428,7 +428,8 @@ export function setupInvoiceIPC(store: Store) {
   ipcMain.handle('invoice:printDirect', async (_, invoiceData) => {
     let printWindow: BrowserWindow | null = null;
     try {
-      const html = buildInvoiceHtml(invoiceData);
+      const settings = store.get('apiSettings') as any;
+      const html = buildInvoiceHtml(invoiceData, settings?.printSettings);
 
       printWindow = new BrowserWindow({ show: false });
       await printWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`);

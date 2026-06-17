@@ -14,14 +14,11 @@ export function setupSettingsIPC(store: Store) {
   // دالة مساعدة للحصول على عميل Supabase المحدث
   const getSupabaseClient = () => {
     const settings = store.get('apiSettings') as { supabase?: { url: string; anonKey: string } };
-    let url = settings?.supabase?.url;
-    let anonKey = settings?.supabase?.anonKey;
+    const url = settings?.supabase?.url;
+    const anonKey = settings?.supabase?.anonKey;
 
-    if (!url || url.trim() === '') {
-      url = 'https://dtklpugpwejrjnkxdkhh.supabase.co';
-    }
-    if (!anonKey || anonKey.trim() === '' || anonKey === 'placeholder') {
-      anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y';
+    if (!url || !anonKey || url.trim() === '' || anonKey.trim() === '' || anonKey === 'placeholder') {
+      return null;
     }
 
     return createClient(url.replace(/[”"']/g, '').trim(), anonKey.replace(/[”"']/g, '').trim(), {
@@ -33,11 +30,7 @@ export function setupSettingsIPC(store: Store) {
   // استرجاع الإعدادات المحفوظة
   ipcMain.handle('settings:get', async () => {
     const local = store.get('apiSettings', {
-      supabase: {
-        url: 'https://dtklpugpwejrjnkxdkhh.supabase.co',
-        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y',
-        serviceRoleKey: ''
-      },
+      supabase: { url: '', anonKey: '', serviceRoleKey: '' },
       twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
       meta: { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' },
       activeProvider: 'twilio',
@@ -45,29 +38,50 @@ export function setupSettingsIPC(store: Store) {
       employees: [],
       quickReplies: [],
       activeEmployeeId: '',
+      printSettings: {
+        companyName: '',
+        companyPhone: '',
+        companyAddress: '',
+        companyLogo: '',
+        taxNumber: '',
+        termsText: 'نشكركم لثقتكم في منتجاتنا 🌸',
+        paperSize: 'A4',
+        showLogo: true
+      }
     }) as any;
 
     // تأكيد الاتصال التلقائي سحابياً كقيم افتراضية إذا كانت فارغة في ملف الإعدادات المحلي
     if (!local.supabase) {
       local.supabase = { url: '', anonKey: '', serviceRoleKey: '' };
     }
-    if (!local.supabase.url || local.supabase.url.trim() === '') {
-      local.supabase.url = 'https://dtklpugpwejrjnkxdkhh.supabase.co';
-    }
-    if (!local.supabase.anonKey || local.supabase.anonKey.trim() === '' || local.supabase.anonKey === 'placeholder') {
-      local.supabase.anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y';
+    if (!local.printSettings) {
+      local.printSettings = {
+        companyName: '',
+        companyPhone: '',
+        companyAddress: '',
+        companyLogo: '',
+        taxNumber: '',
+        termsText: 'نشكركم لثقتكم في منتجاتنا 🌸',
+        paperSize: 'A4',
+        showLogo: true
+      };
     }
 
     try {
       const supabase = getSupabaseClient();
       if (supabase) {
-        const { data: providers } = await supabase
-          .from('whatsapp_providers')
-          .select('*');
+        const { data: providers } = await Promise.race([
+          supabase
+            .from('whatsapp_providers')
+            .select('*'),
+          new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('Connection timeout')), 2500)
+          )
+        ]);
 
         if (providers && providers.length > 0) {
-          const twilioProvider = providers.find(p => p.type === 'twilio');
-          const metaProvider = providers.find(p => p.type === 'meta');
+          const twilioProvider = providers.find((p: any) => p.type === 'twilio');
+          const metaProvider = providers.find((p: any) => p.type === 'meta');
 
           if (twilioProvider) {
             local.twilio = {
@@ -105,6 +119,31 @@ export function setupSettingsIPC(store: Store) {
               };
             }
           }
+        }
+
+        // جلب إعدادات الطباعة سحابياً
+        const { data: printSettingsData } = await Promise.race([
+          supabase
+            .from('print_settings')
+            .select('*')
+            .limit(1)
+            .maybeSingle(),
+          new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('Connection timeout')), 2500)
+          )
+        ]);
+
+        if (printSettingsData) {
+          local.printSettings = {
+            companyName: printSettingsData.company_name || '',
+            companyPhone: printSettingsData.company_phone || '',
+            companyAddress: printSettingsData.company_address || '',
+            companyLogo: printSettingsData.logo_url || '',
+            taxNumber: printSettingsData.tax_number || '',
+            termsText: printSettingsData.terms_text || '',
+            paperSize: printSettingsData.paper_size || 'A4',
+            showLogo: printSettingsData.show_logo !== undefined ? printSettingsData.show_logo : true
+          };
         }
       }
     } catch (err) {
@@ -147,6 +186,16 @@ export function setupSettingsIPC(store: Store) {
       employees: Array.isArray((settings as any).employees) ? (settings as any).employees : [],
       quickReplies: Array.isArray((settings as any).quickReplies) ? (settings as any).quickReplies : [],
       activeEmployeeId: cleanValue((settings as any).activeEmployeeId),
+      printSettings: {
+        companyName: cleanValue((settings as any).printSettings?.companyName),
+        companyPhone: cleanValue((settings as any).printSettings?.companyPhone),
+        companyAddress: cleanValue((settings as any).printSettings?.companyAddress),
+        companyLogo: (settings as any).printSettings?.companyLogo || '',
+        taxNumber: cleanValue((settings as any).printSettings?.taxNumber),
+        termsText: cleanValue((settings as any).printSettings?.termsText),
+        paperSize: (settings as any).printSettings?.paperSize || 'A4',
+        showLogo: (settings as any).printSettings?.showLogo !== undefined ? Boolean((settings as any).printSettings?.showLogo) : true
+      }
     };
 
     // 1. حفظ الإعدادات محلياً
@@ -228,6 +277,38 @@ export function setupSettingsIPC(store: Store) {
           await supabase
             .from('whatsapp_providers')
             .insert(metaData);
+        }
+
+        // 3. حفظ إعدادات الطباعة سحابياً
+        if (cleaned.printSettings) {
+          const printData = {
+            company_name: cleaned.printSettings.companyName,
+            company_phone: cleaned.printSettings.companyPhone,
+            company_address: cleaned.printSettings.companyAddress,
+            logo_url: cleaned.printSettings.companyLogo,
+            tax_number: cleaned.printSettings.taxNumber,
+            terms_text: cleaned.printSettings.termsText,
+            paper_size: cleaned.printSettings.paperSize,
+            show_logo: cleaned.printSettings.showLogo,
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: existingPrint } = await supabase
+            .from('print_settings')
+            .select('id')
+            .limit(1)
+            .maybeSingle();
+
+          if (existingPrint) {
+            await supabase
+              .from('print_settings')
+              .update(printData)
+              .eq('id', existingPrint.id);
+          } else {
+            await supabase
+              .from('print_settings')
+              .insert(printData);
+          }
         }
       }
     } catch (err) {

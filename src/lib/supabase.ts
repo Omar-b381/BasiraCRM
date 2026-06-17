@@ -6,15 +6,23 @@ const cleanEnvVar = (val?: string): string => {
   return val.replace(/[”"']/g, '').trim();
 };
 
-const defaultUrl = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_URL) || 'https://dtklpugpwejrjnkxdkhh.supabase.co';
-const defaultAnonKey = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y';
+const defaultUrl = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_URL) || 'https://placeholder.supabase.co';
+const defaultAnonKey = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_ANON_KEY) || 'placeholder';
 
+let activeUrl = defaultUrl;
+let activeKey = defaultAnonKey;
 let activeClient = createClient(defaultUrl, defaultAnonKey);
 
 export const updateSupabaseClient = (url: string, anonKey: string) => {
   const cleanUrl = cleanEnvVar(url);
   const cleanKey = cleanEnvVar(anonKey);
   if (cleanUrl && cleanKey && cleanKey !== 'placeholder') {
+    // منع إعادة إنشاء العميل إذا كانت القيم متطابقة لتجنب تحذيرات GoTrueClient المتعددة
+    if (cleanUrl === activeUrl && cleanKey === activeKey) {
+      return;
+    }
+    activeUrl = cleanUrl;
+    activeKey = cleanKey;
     activeClient = createClient(cleanUrl, cleanKey);
   }
 };

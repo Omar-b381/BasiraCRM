@@ -32,6 +32,17 @@ export interface Employee {
   permissions: string[];
 }
 
+export interface PrintSettings {
+  companyName: string;
+  companyPhone: string;
+  companyAddress: string;
+  companyLogo: string; // Base64 encoded image
+  taxNumber: string;
+  termsText: string;
+  paperSize: 'A4' | 'A5' | 'Receipt';
+  showLogo: boolean;
+}
+
 export interface AppSettings {
   supabase: SupabaseConfig;
   twilio: TwilioConfig;
@@ -42,6 +53,7 @@ export interface AppSettings {
   quickReplies?: string[];
   activeEmployeeId?: string;
   lastUpdated?: string;
+  printSettings?: PrintSettings;
 }
 
 export interface ConnectionTestResult {

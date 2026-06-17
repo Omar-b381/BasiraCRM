@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Eye, Phone, MapPin, Mail, Calendar, Receipt, Sparkles, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Eye, Phone, MapPin, Mail, Calendar, Receipt, Sparkles, X, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
 import { useContactsStore } from '../store/useContactsStore';
+import { useNavigate } from 'react-router-dom';
+import { useMessagesStore } from '../store/useMessagesStore';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
@@ -18,8 +20,34 @@ export default function Contacts() {
     clearSelectedContact
   } = useContactsStore();
 
+  const navigate = useNavigate();
+  const { conversations, setActiveConversation } = useMessagesStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<number | null>(null);
+
+  const handleStartChat = (contact: any) => {
+    const cleanPhone = contact.phone.replace('whatsapp:', '').replace('+', '').trim();
+    const existing = conversations.find(
+      (c) => c.contactPhone.replace('whatsapp:', '').replace('+', '').trim() === cleanPhone
+    );
+
+    if (existing) {
+      setActiveConversation(existing);
+    } else {
+      const tempConv = {
+        contactId: contact.customer_id || contact.id,
+        contactName: contact.name,
+        contactPhone: contact.phone,
+        unreadCount: 0,
+        messages: [],
+        lastActivity: new Date().toISOString(),
+        lastMessage: undefined
+      };
+      setActiveConversation(tempConv);
+    }
+
+    navigate('/whatsapp');
+  };
 
   useEffect(() => {
     fetchContacts();
@@ -144,6 +172,13 @@ export default function Contacts() {
                     <span>البريد: {selectedContact.email}</span>
                   </div>
                 )}
+                <button
+                  onClick={() => handleStartChat(selectedContact)}
+                  className="mt-3 px-4 py-2 bg-emerald-600/10 hover:bg-emerald-650 text-emerald-400 hover:text-white border border-emerald-500/15 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  مراسلة واتساب
+                </button>
               </div>
               
               <div className="space-y-3">

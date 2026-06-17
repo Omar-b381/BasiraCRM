@@ -14,6 +14,7 @@ export function useWhatsApp() {
     sendMessage,
     receiveIncomingMessage,
     setActiveConversation,
+    deleteConversation,
   } = useMessagesStore();
 
   // الاشتراك في بث الرسائل الواردة من Electron Main
@@ -25,9 +26,9 @@ export function useWhatsApp() {
   }, [receiveIncomingMessage]);
 
   const send = useCallback(
-    async (body: string) => {
+    async (body: string, mediaUrl?: string, messageType?: string, fileName?: string) => {
       if (!activeConversation) return false;
-      return sendMessage(activeConversation.contactPhone, body);
+      return sendMessage(activeConversation.contactPhone, body, mediaUrl, messageType, fileName);
     },
     [activeConversation, sendMessage]
   );
@@ -42,5 +43,6 @@ export function useWhatsApp() {
     fetchMessages: (phone: string) => fetchMessages(phone),
     send,
     setActiveConversation,
+    deleteConversation,
   };
 }

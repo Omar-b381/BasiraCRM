@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Paperclip, Languages, Brain, Lock, X, FileText } from 'lucide-react';
 import Button from '../ui/Button';
+import { supabase } from '../../lib/supabase';
+
+interface AttachmentFile {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+}
 
 interface MessageComposerProps {
-  onSend: (body: string, isInternal?: boolean) => Promise<boolean>;
+  onSend: (body: string, isInternal?: boolean, mediaUrl?: string, messageType?: string, fileName?: string) => Promise<boolean>;
   onOpenTemplates: () => void;
   hasTemplates?: boolean;
   lastMessageText?: string;
@@ -28,10 +35,12 @@ export default function MessageComposer({
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
-  const [attachment, setAttachment] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<AttachmentFile | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [showAiToast, setShowAiToast] = useState(false);
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // زيادة الارتفاع تلقائياً عند الطباعة
   useEffect(() => {
@@ -45,12 +54,21 @@ export default function MessageComposer({
     let trimmed = message.trim();
     if (!trimmed && !attachment) return;
 
+    setIsSending(true);
+
+    let success = false;
     if (attachment) {
-      trimmed = `${trimmed}\n[مرفق: ${attachment}]`.trim();
+      // إرسال المرفق أولاً
+      success = await onSend('', isInternal, attachment.url, attachment.type, attachment.name);
+      
+      // إذا كان هناك نص مكتوب كشرح، نرسله بعد المرفق كرسالة منفصلة
+      if (success && trimmed) {
+        await onSend(trimmed, isInternal);
+      }
+    } else {
+      success = await onSend(trimmed, isInternal);
     }
 
-    setIsSending(true);
-    const success = await onSend(trimmed, isInternal);
     if (success) {
       setMessage('');
       setAttachment(null);
@@ -106,16 +124,99 @@ export default function MessageComposer({
     setMessage(translation);
   };
 
-  // محاكاة إرفاق ملف
+  // إرفاق ملف حقيقي ورفعه إلى Supabase
   const handleAttachFile = () => {
-    const files = ['صورة_الفاتورة.png', 'تفاصيل_الشحن.pdf', 'صورة_المنتج.jpg'];
-    const randomFile = files[Math.floor(Math.random() * files.length)];
-    setAttachment(randomFile);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      let publicUrl = '';
+      let uploadedToSupabase = false;
+
+      // 1. محاولة الرفع أولاً على Supabase Storage
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+        const filePath = `uploads/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('whatsapp-media')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (!error) {
+          const { data: urlData } = supabase.storage.from('whatsapp-media').getPublicUrl(filePath);
+          publicUrl = urlData.publicUrl;
+          uploadedToSupabase = true;
+          console.log('Uploaded successfully to Supabase Storage:', publicUrl);
+        } else {
+          console.warn('Supabase storage upload failed, falling back to tmpfiles.org:', error.message);
+        }
+      } catch (sbErr) {
+        console.warn('Supabase storage exception, falling back to tmpfiles.org:', sbErr);
+      }
+
+      // 2. إذا لم يتم الرفع على Supabase (بسبب عدم تهيئة الحاوية أو RLS)، نستخدم tmpfiles.org كبديل تلقائي وسريع
+      if (!uploadedToSupabase) {
+        console.log('Uploading to tmpfiles.org fallback...');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`فشل الرفع البديل: ${response.statusText}`);
+        }
+
+        const resData = await response.json();
+        if (resData.status === 'success' && resData.data?.url) {
+          const rawUrl = resData.data.url;
+          // تحويل الرابط إلى رابط مباشر قابل للتحميل من قبل Twilio/Meta
+          publicUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+          console.log('Uploaded successfully to tmpfiles.org (fallback):', publicUrl);
+        } else {
+          throw new Error('فشل الرفع البديل: رد غير متوقع من الخادم');
+        }
+      }
+
+      // 3. تحديد نوع الملف
+      const isImg = file.type.startsWith('image/');
+      
+      setAttachment({
+        name: file.name,
+        url: publicUrl,
+        type: isImg ? 'image' : 'document'
+      });
+    } catch (err) {
+      console.error('File upload exception:', err);
+      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء رفع الملف.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
     <div className="p-4 border-t border-gray-800 bg-gray-900/10 flex flex-col gap-3 backdrop-blur-md relative">
       
+      {/* مدخل ملف مخفي */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {/* توست الذكاء الاصطناعي */}
       {showAiToast && (
         <div className="absolute top-[-45px] right-4 bg-indigo-650/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl border border-indigo-500/30 flex items-center gap-1.5 animate-bounce shadow-lg">
@@ -154,6 +255,7 @@ export default function MessageComposer({
           {/* المرفقات */}
           <button
             onClick={handleAttachFile}
+            disabled={isUploading}
             title="إرفاق ملف أو صورة"
             className={`p-2 border rounded-xl transition-all active:scale-95 ${
               attachment 
@@ -197,14 +299,24 @@ export default function MessageComposer({
         </button>
       </div>
 
-      {/* المرفق المحدد */}
+      {/* المرفق المحدد أو جاري الرفع */}
+      {isUploading && (
+        <div className="flex items-center gap-2 bg-gray-950/40 border border-gray-800 p-2 rounded-xl text-[10px] text-indigo-400 font-bold">
+          <svg className="animate-spin h-3.5 w-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span>جاري رفع المرفق...</span>
+        </div>
+      )}
+
       {attachment && (
-        <div className="flex items-center gap-2 bg-emerald-950/20 border border-emerald-500/15 p-2 rounded-xl text-[10px] text-emerald-400 font-bold justify-between">
-          <div className="flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" />
-            <span>{attachment}</span>
+        <div className="flex items-center gap-2 bg-emerald-950/20 border border-emerald-500/15 p-2 rounded-xl text-[10px] text-emerald-400 font-bold justify-between font-sans">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{attachment.name}</span>
           </div>
-          <button onClick={() => setAttachment(null)} className="hover:text-emerald-350">
+          <button onClick={() => setAttachment(null)} className="hover:text-emerald-300 shrink-0">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -214,7 +326,7 @@ export default function MessageComposer({
       <div className="flex items-end gap-3">
         <div className={`flex-1 bg-gray-950/40 border rounded-2xl overflow-hidden transition-all duration-200 ${
           isInternal 
-            ? 'border-amber-500/50 bg-amber-950/5 focus-within:border-amber-500' 
+            ? 'border-amber-500/50 bg-amber-955/5 focus-within:border-amber-500' 
             : 'border-gray-800/80 focus-within:border-indigo-500/50'
         }`}>
           <textarea
@@ -231,7 +343,7 @@ export default function MessageComposer({
 
         <Button
           onClick={handleSend}
-          disabled={!message.trim() && !attachment}
+          disabled={(!message.trim() && !attachment) || isUploading}
           isLoading={isSending}
           className={`h-[40px] px-5 rounded-2xl ${isInternal ? 'bg-amber-600 hover:bg-amber-500 text-white' : ''}`}
           icon={<Send className="w-4 h-4 rotate-180" />}

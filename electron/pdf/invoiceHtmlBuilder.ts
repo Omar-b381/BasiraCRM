@@ -84,7 +84,7 @@ function buildNotesSection(notes?: string | null): string {
  * يحمّل القالب الثابت ويستبدل المتغيرات ببيانات الفاتورة الفعلية
  * ⚠️ هذه الدالة لا تتصل بقاعدة البيانات — تستقبل بيانات جاهزة فقط
  */
-export function buildInvoiceHtml(invoice: InvoiceLike, logoBase64?: string): string {
+export function buildInvoiceHtml(invoice: InvoiceLike, printSettings?: any): string {
   // Try several potential template paths to be robust
   let templatePath = path.join(__dirname, '../../assets/invoice-template.html');
   if (!fs.existsSync(templatePath)) {
@@ -114,15 +114,21 @@ export function buildInvoiceHtml(invoice: InvoiceLike, logoBase64?: string): str
     '{{items_table_rows}}': buildItemsRows(invoice.items),
     '{{discount_section}}': buildDiscountSection(invoice.discount_amount),
     '{{notes_section}}': buildNotesSection(invoice.notes),
+    '{{company_name}}': escapeHtml(printSettings?.companyName || ''),
+    '{{company_phone}}': escapeHtml(printSettings?.companyPhone || ''),
+    '{{company_address}}': escapeHtml(printSettings?.companyAddress || ''),
+    '{{terms_text}}': escapeHtml(printSettings?.termsText || 'نشكركم لثقتكم في منتجاتنا 🌸'),
+    '{{tax_number_section}}': printSettings?.taxNumber ? `الرقم الضريبي: ${escapeHtml(printSettings.taxNumber)}` : '',
   };
 
   for (const [key, value] of Object.entries(replacements)) {
     html = html.split(key).join(value);
   }
 
-  // استبدال الشعار إذا توفر (Base64) — وإلا حذف الصورة لمنع كسر التصميم
-  if (logoBase64) {
-    html = html.replace('src="logo.png"', `src="data:image/png;base64,${logoBase64}"`);
+  const logoBase64 = printSettings?.companyLogo;
+  if (logoBase64 && printSettings?.showLogo !== false) {
+    const srcValue = logoBase64.startsWith('data:') ? logoBase64 : `data:image/png;base64,${logoBase64}`;
+    html = html.replace('src="logo.png"', `src="${srcValue}"`);
   } else {
     html = html.replace(/<img src="logo\.png"[^>]*>/, '');
   }

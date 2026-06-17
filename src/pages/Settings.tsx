@@ -11,10 +11,10 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const DEFAULT_EMPLOYEES: Employee[] = [
-  { id: '1', name: 'عمر البشير', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices'] },
-  { id: '2', name: 'أحمد محمود', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices'] },
-  { id: '3', name: 'مريم علي', role: 'agent', permissions: ['send_messages'] },
-  { id: '4', name: 'خالد مصطفى', role: 'agent', permissions: ['send_messages'] }
+  { id: '1', name: 'عمر البشير', username: 'omar', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices'] },
+  { id: '2', name: 'أحمد محمود', username: 'ahmed', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices'] },
+  { id: '3', name: 'مريم علي', username: 'maryam', role: 'agent', permissions: ['send_messages'] },
+  { id: '4', name: 'خالد مصطفى', username: 'khaled', role: 'agent', permissions: ['send_messages'] }
 ];
 
 const DEFAULT_QUICK_REPLIES = [
@@ -28,7 +28,7 @@ export default function Settings() {
   const { settings, saveSettings, fetchSettings, saveStatus } = useSettingsStore();
   const { tests, runTest } = useConnectionTest();
   
-  const [activeTab, setActiveTab] = useState<'api' | 'employees' | 'replies'>('api');
+  const [activeTab, setActiveTab] = useState<'api' | 'employees' | 'replies' | 'print'>('api');
 
   // إعدادات الخوادم والـ APIs
   const [localSettings, setLocalSettings] = useState<AppSettings>({
@@ -39,7 +39,17 @@ export default function Settings() {
     webhook: { port: 3001, secret: '', enabled: false },
     employees: [],
     quickReplies: [],
-    activeEmployeeId: ''
+    activeEmployeeId: '',
+    printSettings: {
+      companyName: '',
+      companyPhone: '',
+      companyAddress: '',
+      companyLogo: '',
+      taxNumber: '',
+      termsText: 'نشكركم لثقتكم في منتجاتنا 🌸',
+      paperSize: 'A4',
+      showLogo: true
+    }
   });
 
 
@@ -86,7 +96,7 @@ export default function Settings() {
       setIsLoaded(true);
     });
     loadDbTemplates();
-  }, [fetchSettings]);
+  }, []);
 
   // حفظ الإعدادات تلقائياً عند التعديل (بعد التوقف عن الكتابة بـ 1200 مللي ثانية للتعديلات الكبيرة)
   useEffect(() => {
@@ -119,6 +129,24 @@ export default function Settings() {
     } finally {
       setIsLoadingTemplates(false);
     }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64String = reader.result as string;
+      setLocalSettings(prev => ({
+        ...prev,
+        printSettings: {
+          ...prev.printSettings!,
+          companyLogo: base64String
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveSettings = async () => {
@@ -345,6 +373,15 @@ export default function Settings() {
         >
           إعدادات الردود السريعة والقوالب
           {activeTab === 'replies' && <span className="absolute bottom-0 right-0 left-0 h-0.5 bg-indigo-500 rounded-full" />}
+        </button>
+        <button
+          onClick={() => setActiveTab('print')}
+          className={`pb-3 text-xs font-bold transition-all relative ${
+            activeTab === 'print' ? 'text-indigo-400 font-extrabold' : 'text-gray-500 hover:text-gray-400'
+          }`}
+        >
+          هوية الفواتير وإعدادات الطباعة
+          {activeTab === 'print' && <span className="absolute bottom-0 right-0 left-0 h-0.5 bg-indigo-500 rounded-full" />}
         </button>
       </div>
 
@@ -881,6 +918,156 @@ export default function Settings() {
 
           </div>
 
+        </div>
+      )}
+
+      {/* ======================================================= */}
+      {/* 4. تبويب هوية الفواتير وإعدادات الطباعة */}
+      {/* ======================================================= */}
+      {activeTab === 'print' && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <section className="glass rounded-3xl p-6 space-y-6">
+            <div className="flex items-center gap-2.5 border-b border-gray-800/60 pb-3">
+              <Laptop className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-bold text-white">تفاصيل هوية الشركة المطبوعة على الفواتير</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="اسم الشركة (يظهر في الترويسة)"
+                value={localSettings.printSettings?.companyName || ''}
+                onChange={(e) => setLocalSettings(s => ({
+                  ...s,
+                  printSettings: { ...s.printSettings!, companyName: e.target.value }
+                }))}
+                placeholder="مثال: مؤسسة مواسم التجارية"
+              />
+              <Input
+                label="رقم الهاتف"
+                value={localSettings.printSettings?.companyPhone || ''}
+                onChange={(e) => setLocalSettings(s => ({
+                  ...s,
+                  printSettings: { ...s.printSettings!, companyPhone: e.target.value }
+                }))}
+                placeholder="مثال: 0100XXXXXXX"
+              />
+              <Input
+                label="العنوان"
+                value={localSettings.printSettings?.companyAddress || ''}
+                onChange={(e) => setLocalSettings(s => ({
+                  ...s,
+                  printSettings: { ...s.printSettings!, companyAddress: e.target.value }
+                }))}
+                placeholder="مثال: القاهرة، مصر"
+              />
+              <Input
+                label="الرقم الضريبي (اختياري)"
+                value={localSettings.printSettings?.taxNumber || ''}
+                onChange={(e) => setLocalSettings(s => ({
+                  ...s,
+                  printSettings: { ...s.printSettings!, taxNumber: e.target.value }
+                }))}
+                placeholder="الرقم الضريبي للشركة"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] text-gray-400 font-bold block mb-1">الشروط والأحكام / نص التذييل</label>
+              <textarea
+                value={localSettings.printSettings?.termsText || ''}
+                onChange={(e) => setLocalSettings(s => ({
+                  ...s,
+                  printSettings: { ...s.printSettings!, termsText: e.target.value }
+                }))}
+                placeholder="اكتب الشروط أو رسالة شكر للعملاء هنا..."
+                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-indigo-500 transition-all font-semibold h-24 resize-none"
+              />
+            </div>
+
+            {/* إعدادات الشعار وحجم الورق */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-gray-800/40">
+              <div className="space-y-4">
+                <label className="text-[10px] text-gray-400 font-bold block">شعار الشركة (Company Logo)</label>
+                <div className="flex items-center gap-4">
+                  {localSettings.printSettings?.companyLogo ? (
+                    <div className="relative group shrink-0">
+                      <img
+                        src={localSettings.printSettings.companyLogo}
+                        alt="Logo Preview"
+                        className="w-20 h-20 object-contain rounded-2xl bg-white p-2 border border-gray-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setLocalSettings(s => ({
+                          ...s,
+                          printSettings: { ...s.printSettings!, companyLogo: '' }
+                        }))}
+                        className="absolute -top-1.5 -left-1.5 bg-red-650 hover:bg-red-700 text-white rounded-full p-1 transition-all shadow-md"
+                        title="حذف الشعار"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-800 flex items-center justify-center text-gray-600">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="logo-upload-input"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="logo-upload-input"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer transition-all shadow-lg shadow-indigo-600/15"
+                    >
+                      اختر صورة الشعار
+                    </label>
+                    <p className="text-[10px] text-gray-500">صيغ مدعومة: PNG, JPG, WebP. يفضل مقاس مربع أو مستطيل صغير.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] text-gray-400 font-bold block">خيارات الطباعة الإضافية</label>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2.5 text-xs text-gray-300 cursor-pointer font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.printSettings?.showLogo !== false}
+                      onChange={(e) => setLocalSettings(s => ({
+                        ...s,
+                        printSettings: { ...s.printSettings!, showLogo: e.target.checked }
+                      }))}
+                      className="w-4 h-4 rounded border-gray-800 bg-slate-950 text-indigo-600 focus:ring-0 focus:ring-offset-0"
+                    />
+                    عرض الشعار على الفاتورة المطبوعة
+                  </label>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 font-bold block">مقاس الورق الافتراضي</label>
+                    <select
+                      value={localSettings.printSettings?.paperSize || 'A4'}
+                      onChange={(e) => setLocalSettings(s => ({
+                        ...s,
+                        printSettings: { ...s.printSettings!, paperSize: e.target.value as any }
+                      }))}
+                      className="w-full max-w-[200px] bg-slate-950/60 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 transition-all font-semibold"
+                    >
+                      <option value="A4">A4 (افتراضي)</option>
+                      <option value="A5">A5</option>
+                      <option value="Receipt">إيصال حراري (Receipt)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 

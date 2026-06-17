@@ -9,9 +9,10 @@ interface MessagesState {
   error: string | null;
   fetchConversations: () => Promise<void>;
   fetchMessages: (contactPhone: string) => Promise<void>;
-  sendMessage: (to: string, body: string) => Promise<boolean>;
+  sendMessage: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => Promise<boolean>;
   receiveIncomingMessage: (msg: WhatsAppMessage) => void;
   setActiveConversation: (conv: Conversation | null) => void;
+  deleteConversation: (conversationId: number) => Promise<boolean>;
 }
 
 export const useMessagesStore = create<MessagesState>((set, get) => ({
@@ -49,9 +50,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendMessage: async (to, body) => {
+  sendMessage: async (to, body, mediaUrl, messageType, fileName) => {
     try {
-      const res = await window.electronAPI.whatsapp.send(to, body);
+      const res = await window.electronAPI.whatsapp.send(to, body, mediaUrl, messageType, fileName);
       if (res.success && res.message) {
         const sentMsg: WhatsAppMessage = res.message;
         
@@ -149,6 +150,25 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       }
       
       get().fetchMessages(conv.contactPhone);
+    }
+  },
+
+  deleteConversation: async (conversationId: number) => {
+    try {
+      const res = await window.electronAPI.whatsapp.deleteConversation(conversationId);
+      if (res.success) {
+        set((state) => {
+          const conversations = state.conversations.filter(c => c.id !== conversationId);
+          const activeConversation = state.activeConversation?.id === conversationId ? null : state.activeConversation;
+          const activeMessages = activeConversation ? state.activeMessages : [];
+          return { conversations, activeConversation, activeMessages };
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error deleting conversation in store:', err);
+      return false;
     }
   }
 }));

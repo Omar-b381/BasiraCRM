@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, CheckCheck, AlertCircle, Lock } from 'lucide-react';
+import { Check, CheckCheck, AlertCircle, Lock, FileText, Download } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { WhatsAppMessage } from '../../types/message.types';
 
@@ -39,7 +39,35 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         )}
 
         {/* محتوى الرسالة */}
-        <p className="whitespace-pre-wrap font-semibold select-text">{message.body}</p>
+        {message.message_type === 'image' ? (
+          <div className="mb-1.5">
+            <img
+              src={message.body}
+              alt="صورة مرفقة"
+              onClick={() => window.open(message.body)}
+              className="max-w-full rounded-xl cursor-pointer hover:opacity-95 transition-opacity max-h-64 object-cover border border-gray-750"
+            />
+          </div>
+        ) : message.message_type === 'document' ? (
+          <div
+            onClick={() => window.open(message.body)}
+            className="flex items-center gap-3 p-3 bg-gray-900/30 hover:bg-gray-900/50 border border-gray-800 rounded-xl cursor-pointer transition-all mb-1.5"
+            title="اضغط للفتح والتحميل"
+          >
+            <div className="w-9 h-9 rounded-lg bg-indigo-600/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400 shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-gray-250 truncate">
+                {decodeURIComponent(message.body.substring(message.body.lastIndexOf('/') + 1)) || 'ملف مرفق'}
+              </p>
+              <p className="text-[9px] text-gray-500 font-semibold mt-0.5">اضغط للفتح والتنزيل</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-500 hover:text-indigo-400 transition-colors shrink-0" />
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap font-semibold select-text">{message.body}</p>
+        )}
 
         {/* ذيل الرسالة: التوقيت والحالة */}
         <div

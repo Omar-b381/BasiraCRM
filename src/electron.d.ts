@@ -10,9 +10,10 @@ export interface IElectronAPI {
     webhook: () => Promise<any>;
   };
   whatsapp: {
-    send: (to: string, body: string) => Promise<any>;
+    send: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => Promise<any>;
     getConversations: () => Promise<any>;
     getMessages: (contactPhone: string) => Promise<any>;
+    deleteConversation: (id: number) => Promise<any>;
     onMessage: (callback: (msg: any) => void) => void;
   };
   db: {

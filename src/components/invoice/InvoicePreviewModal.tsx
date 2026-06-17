@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Printer, FileDown, Eye } from 'lucide-react';
 import { formatCurrency } from '../../lib/invoiceCalculations';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import type { InvoiceDraft, SavedInvoice } from '../../types/invoice.types';
 
 interface InvoicePreviewModalProps {
@@ -23,6 +24,9 @@ export default function InvoicePreviewModal({
   isGeneratingPdf = false,
 }: InvoicePreviewModalProps) {
   if (!isOpen) return null;
+
+  const { settings } = useSettingsStore();
+  const printSettings = settings?.printSettings;
 
   const displayId = invoiceId || ('invoice_id' in invoiceData ? invoiceData.invoice_id : 'مسودة');
   const items = (invoiceData.items || []).filter(item => item.product_name && item.product_name.trim() !== '');
@@ -78,9 +82,9 @@ export default function InvoicePreviewModal({
                 )}
                 <p className="col-span-2"><strong>العنوان:</strong> {invoiceData.customer_address || '—'}</p>
               </div>
-              <div className="mt-3 pt-2 border-t border-slate-350 flex justify-between items-center">
-                <span className="font-bold text-slate-950 text-sm">الإجمالي المطلوب للدفع:</span>
-                <span className="font-bold text-indigo-700 text-sm font-mono">
+              <div className="mt-3 pt-2 border-t border-slate-200 flex justify-between items-center">
+                <span className="font-bold text-slate-950 text-xs">الإجمالي المطلوب للدفع:</span>
+                <span className="font-bold text-slate-950 text-sm font-mono">
                   {formatCurrency(invoiceData.final_total)}
                 </span>
               </div>
@@ -92,17 +96,22 @@ export default function InvoicePreviewModal({
               {/* Logo & Info Header */}
               <div className="flex justify-between items-start mb-6">
                 <div className="space-y-1">
-                  <h1 className="text-xl font-bold text-slate-950">فاتورة بيع</h1>
-                  <p className="text-slate-500">رقم الفاتورة: <span className="font-mono font-bold text-slate-950">#{displayId}</span></p>
-                  <p className="text-slate-500">التاريخ: {formatDate(invoiceData.invoice_date)}</p>
-                  <p className="text-slate-500">الحالة: <span className="font-semibold text-slate-800">{invoiceData.status || 'قيد الانتظار'}</span></p>
+                  <h1 className="text-xl font-bold text-slate-950">فاتورة</h1>
+                  <p className="text-slate-500 text-[11px]">رقم الفاتورة: <span className="font-mono font-bold text-slate-950">#{displayId}</span></p>
+                  <p className="text-slate-500 text-[11px]">التاريخ: {formatDate(invoiceData.invoice_date)}</p>
                 </div>
                 
-                {/* Fallback Logo text */}
-                <div className="text-left">
-                  <div className="w-16 h-16 bg-slate-100 border border-slate-200 rounded flex items-center justify-center font-bold text-indigo-600 text-sm shadow-inner">
-                    بصيرة
-                  </div>
+                <div className="text-left space-y-1">
+                  {printSettings?.companyLogo && printSettings.showLogo !== false ? (
+                    <img 
+                      src={printSettings.companyLogo} 
+                      alt="Logo" 
+                      className="max-w-[100px] max-h-[70px] object-contain ml-0 mr-auto"
+                    />
+                  ) : null}
+                  <div className="text-xs font-bold text-slate-950">{printSettings?.companyName || ''}</div>
+                  {printSettings?.companyAddress && <div className="text-[10px] text-slate-500">{printSettings.companyAddress}</div>}
+                  {printSettings?.companyPhone && <div className="text-[10px] text-slate-500">{printSettings.companyPhone}</div>}
                 </div>
               </div>
 
@@ -180,9 +189,9 @@ export default function InvoicePreviewModal({
                         <td className="py-2 text-left font-mono">+ {formatCurrency(shippingCost)}</td>
                       </tr>
                     )}
-                    <tr className="bg-slate-50 font-bold text-slate-950 border-t border-slate-350">
-                      <td className="p-2 text-sm">الإجمالي النهائي:</td>
-                      <td className="p-2 text-left text-sm text-indigo-700 font-mono">
+                    <tr className="bg-slate-100 font-bold text-slate-950 border-t border-slate-300">
+                      <td className="p-2 text-xs">الإجمالي النهائي:</td>
+                      <td className="p-2 text-left text-xs font-bold text-slate-950 font-mono">
                         {formatCurrency(invoiceData.final_total)}
                       </td>
                     </tr>
@@ -191,8 +200,11 @@ export default function InvoicePreviewModal({
               </div>
 
               {/* Footer */}
-              <div className="mt-8 text-center text-slate-400 text-[11px] border-t border-slate-100 pt-4">
-                نشكركم لثقتكم في منتجاتنا 🌸
+              <div className="mt-8 text-center text-slate-500 text-[11px] border-t border-slate-100 pt-4 space-y-1">
+                <p className="font-bold">{printSettings?.termsText || 'نشكركم لثقتكم في منتجاتنا 🌸'}</p>
+                {printSettings?.taxNumber && (
+                  <p className="text-[10px] text-slate-400">الرقم الضريبي: {printSettings.taxNumber}</p>
+                )}
               </div>
             </div>
 

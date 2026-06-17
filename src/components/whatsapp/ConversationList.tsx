@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, User } from 'lucide-react';
+import { Search, User, Plus, Trash2 } from 'lucide-react';
 import type { Conversation } from '../../types/message.types';
 import Input from '../ui/Input';
 
@@ -7,6 +7,8 @@ interface ConversationListProps {
   conversations: Conversation[];
   activeConversation: Conversation | null;
   onSelect: (conv: Conversation) => void;
+  onNewChat: () => void;
+  onDeleteConversation?: (conv: Conversation) => void;
   isLoading?: boolean;
 }
 
@@ -14,6 +16,8 @@ export default function ConversationList({
   conversations,
   activeConversation,
   onSelect,
+  onNewChat,
+  onDeleteConversation,
   isLoading = false
 }: ConversationListProps) {
   const [search, setSearch] = useState('');
@@ -44,6 +48,19 @@ export default function ConversationList({
 
   return (
     <div className="w-80 bg-gray-900/40 border-l border-gray-800 flex flex-col h-full shrink-0">
+      {/* رأس القائمة مع زر بدء محادثة */}
+      <div className="p-4 border-b border-gray-800/60 bg-gray-900/10 flex items-center justify-between">
+        <h3 className="text-xs font-bold text-white">المحادثات</h3>
+        <button
+          type="button"
+          onClick={onNewChat}
+          className="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/20 text-indigo-400 hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          محادثة جديدة
+        </button>
+      </div>
+
       {/* البحث في الدردشات */}
       <div className="p-4 border-b border-gray-800/30 bg-gray-900/10">
         <div className="relative">
@@ -102,7 +119,7 @@ export default function ConversationList({
             <div
               key={uniqueKey}
               onClick={() => onSelect(conv)}
-              className={`p-4 flex items-start gap-3.5 cursor-pointer transition-all duration-200 ${
+              className={`p-4 flex items-start gap-3.5 cursor-pointer transition-all duration-200 group relative ${
                 isActive
                   ? 'bg-indigo-600/10 border-r-2 border-indigo-500 text-white'
                   : 'hover:bg-gray-900/20 text-gray-400'
@@ -136,6 +153,21 @@ export default function ConversationList({
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-[10px] font-bold text-white flex items-center justify-center shrink-0">
                   {conv.unreadCount}
                 </span>
+              )}
+
+              {/* زر حذف المحادثة يظهر عند التحويم */}
+              {onDeleteConversation && conv.id && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteConversation(conv);
+                  }}
+                  className="absolute left-2.5 bottom-2.5 p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-gray-800/80 z-10"
+                  title="حذف المحادثة"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
           );

@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import ShippingExport from './pages/ShippingExport';
 import OrderTracking from './pages/OrderTracking';
 import Login from './pages/Login';
+import Onboarding from './pages/Onboarding';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -29,13 +30,33 @@ const IndexRedirect = () => {
 };
 
 export default function App() {
-  const { fetchSettings } = useSettingsStore();
+  const { fetchSettings, settings } = useSettingsStore();
   const { isLoggedIn, currentEmployee } = useAuthStore();
+  const [initialLoading, setInitialLoading] = React.useState(true);
 
   // تحميل الإعدادات المسجلة للاتصال بالـ APIs عند تشغيل التطبيق
   useEffect(() => {
-    fetchSettings();
+    fetchSettings().finally(() => {
+      setInitialLoading(false);
+    });
   }, [fetchSettings]);
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white" style={{ backgroundColor: '#070033' }}>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="text-sm font-semibold">جاري تحميل الإعدادات والاتصال بالسحابة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isConfigured = settings.supabase?.url && settings.supabase?.anonKey && settings.supabase.url.trim() !== '' && settings.supabase.anonKey.trim() !== '';
+
+  if (!isConfigured) {
+    return <Onboarding />;
+  }
 
   if (!isLoggedIn) {
     return <Login />;

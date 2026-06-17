@@ -16,15 +16,21 @@ interface SettingsState {
 }
 
 const defaultSettings: AppSettings = {
-  supabase: {
-    url: 'https://dtklpugpwejrjnkxdkhh.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y',
-    serviceRoleKey: ''
-  },
+  supabase: { url: '', anonKey: '', serviceRoleKey: '' },
   twilio: { accountSid: '', authToken: '', whatsappNumber: '' },
   meta: { accessToken: '', phoneNumberId: '', whatsappNumber: '', verifyToken: '' },
   activeProvider: 'twilio',
   webhook: { port: 3001, secret: '', enabled: false },
+  printSettings: {
+    companyName: '',
+    companyPhone: '',
+    companyAddress: '',
+    companyLogo: '',
+    taxNumber: '',
+    termsText: 'نشكركم لثقتكم في منتجاتنا 🌸',
+    paperSize: 'A4',
+    showLogo: true
+  }
 };
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -46,10 +52,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         let dbEmployees: Employee[] = [];
         if (s.supabase?.url && s.supabase?.anonKey && s.supabase.anonKey !== 'placeholder') {
           try {
-            const { data, error } = await supabase
-              .from('system_employees')
-              .select('*')
-              .order('created_at', { ascending: true });
+            const { data, error } = await Promise.race([
+              supabase
+                .from('system_employees')
+                .select('*')
+                .order('created_at', { ascending: true }),
+              new Promise<any>((_, reject) =>
+                setTimeout(() => reject(new Error('Connection timeout')), 3000)
+              )
+            ]);
 
             if (!error && data) {
               if (data.length === 0) {
@@ -62,7 +73,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
                 ];
                 
                 // Insert into Supabase
-                const rowsToInsert = localEmps.map(e => ({
+                const rowsToInsert = localEmps.map((e: any) => ({
                   id: e.id,
                   name: e.name,
                   username: (e as any).username || 'emp_' + e.id,
@@ -72,7 +83,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
                 }));
                 
                 await supabase.from('system_employees').insert(rowsToInsert);
-                dbEmployees = localEmps.map(e => ({
+                dbEmployees = localEmps.map((e: any) => ({
                   id: e.id,
                   name: e.name,
                   username: (e as any).username || 'emp_' + e.id,

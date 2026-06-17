@@ -313,7 +313,7 @@ export function setupWhatsAppIPC(store: Store) {
   };
 
   // إرسال رسالة WhatsApp
-  ipcMain.handle('whatsapp:send', async (_, { to, body }) => {
+  ipcMain.handle('whatsapp:send', async (_, { to, body, mediaUrl, messageType, fileName }) => {
     try {
       const supabase = getSupabaseClient();
 
@@ -324,20 +324,40 @@ export function setupWhatsAppIPC(store: Store) {
       let statusStr = '';
 
       if (provider.type === 'meta') {
-        const cleanTo = to.replace('whatsapp:', '').replace('+', '').trim();
+        let cleanTo = to.replace('whatsapp:', '').replace('+', '').trim();
+        // تنسيق تلقائي لأرقام مصر لتجنب خطأ missing country code
+        if (cleanTo.startsWith('01') && cleanTo.length === 11) {
+          cleanTo = '20' + cleanTo.substring(1);
+        } else if (cleanTo.startsWith('1') && cleanTo.length === 10) {
+          cleanTo = '20' + cleanTo;
+        }
+
+        let payload: any = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanTo,
+        };
+
+        if (mediaUrl) {
+          if (messageType === 'image') {
+            payload.type = 'image';
+            payload.image = { link: mediaUrl };
+          } else {
+            payload.type = 'document';
+            payload.document = { link: mediaUrl, filename: fileName || 'file' };
+          }
+        } else {
+          payload.type = 'text';
+          payload.text = { preview_url: false, body: body };
+        }
+
         const response = await fetch(`https://graph.facebook.com/v18.0/${provider.api_url}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${provider.api_key}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanTo,
-            type: 'text',
-            text: { preview_url: false, body: body }
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -353,11 +373,20 @@ export function setupWhatsAppIPC(store: Store) {
         const { client, fromNumber } = await getTwilioClient(supabase);
         const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
 
-        const twilioRes = await client.messages.create({
+        const twilioPayload: any = {
           from: fromNumber,
           to: toNumber,
           body,
-        });
+        };
+
+        if (mediaUrl) {
+          twilioPayload.mediaUrl = [mediaUrl];
+          if (!body) {
+            delete twilioPayload.body;
+          }
+        }
+
+        const twilioRes = await client.messages.create(twilioPayload);
 
         messageId = twilioRes.sid;
         statusStr = twilioRes.status;
@@ -371,8 +400,8 @@ export function setupWhatsAppIPC(store: Store) {
         .insert({
           conversation_id: conversationId,
           direction: 'outbound',
-          content: body,
-          message_type: 'text',
+          content: mediaUrl || body,
+          message_type: messageType || 'text',
           status: statusStr,
           provider_msg_id: messageId,
           sent_at: new Date().toISOString()
@@ -397,7 +426,7 @@ export function setupWhatsAppIPC(store: Store) {
           status: statusStr,
           sent_at: new Date().toISOString(),
           provider_id: provider.id || null,
-          message_content: body
+          message_content: mediaUrl || body
         });
 
       return {
@@ -413,7 +442,8 @@ export function setupWhatsAppIPC(store: Store) {
           direction: 'outbound',
           body: insertedMsg.content,
           status: statusStr,
-          timestamp: insertedMsg.sent_at
+          timestamp: insertedMsg.sent_at,
+          message_type: insertedMsg.message_type
         }
       };
     } catch (err) {
@@ -613,4 +643,35 @@ export function setupWhatsAppIPC(store: Store) {
       console.error('Error handling incoming message save:', err);
     }
   });
+
+  // حذف محادثة ورسائلها
+  ipcMain.handle('whatsapp:deleteConversation', async (_, conversationId: number) => {
+    try {
+      const supabase = getSupabaseClient();
+
+      // 1. حذف الرسائل التابعة للمحادثة أولاً لتجنب مشاكل Foreign Key
+      const { error: msgError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      if (msgError) throw msgError;
+
+      // 2. حذف المحادثة نفسها
+      const { error: convError } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      if (convError) throw convError;
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل حذف المحادثة',
+      };
+    }
+  });
 }
+

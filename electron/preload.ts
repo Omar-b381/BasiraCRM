@@ -18,9 +18,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // WhatsApp
   whatsapp: {
-    send: (to: string, body: string) => ipcRenderer.invoke('whatsapp:send', { to, body }),
+    send: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => 
+      ipcRenderer.invoke('whatsapp:send', { to, body, mediaUrl, messageType, fileName }),
     getConversations: () => ipcRenderer.invoke('whatsapp:getConversations'),
     getMessages: (contactPhone: string) => ipcRenderer.invoke('whatsapp:getMessages', contactPhone),
+    deleteConversation: (id: number) => ipcRenderer.invoke('whatsapp:deleteConversation', id),
     onMessage: (callback: (msg: unknown) => void) => {
       // Clean up previous listeners if necessary
       ipcRenderer.removeAllListeners('whatsapp:incoming');

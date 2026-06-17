@@ -9,6 +9,8 @@ import ConversationList from '../components/whatsapp/ConversationList';
 import ChatWindow from '../components/whatsapp/ChatWindow';
 import CustomerDataPanel from '../components/whatsapp/CustomerDataPanel';
 import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import type { Conversation } from '../types/message.types';
 import { useSettingsStore } from '../store/useSettingsStore';
 
@@ -21,7 +23,8 @@ export default function WhatsApp() {
     isLoading,
     fetchConversations,
     send,
-    setActiveConversation
+    setActiveConversation,
+    deleteConversation
   } = useWhatsApp();
 
   const employees = settings.employees || [];
@@ -38,6 +41,75 @@ export default function WhatsApp() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [activeCustomerSegment, setActiveCustomerSegment] = useState<string | null>(null);
   const [activeInvoices, setActiveInvoices] = useState<any[]>([]);
+
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState('');
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatError, setNewChatError] = useState('');
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConversationClick = (conv: Conversation) => {
+    setConversationToDelete(conv);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!conversationToDelete || !conversationToDelete.id) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteConversation(conversationToDelete.id);
+      if (success) {
+        setIsDeleteConfirmOpen(false);
+        setConversationToDelete(null);
+      } else {
+        alert('فشل حذف المحادثة. يرجى المحاولة مرة أخرى.');
+      }
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCreateNewChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewChatError('');
+
+    const cleanedPhone = newChatPhone.replace(/[+\s()-]/g, '').trim();
+    if (!cleanedPhone || cleanedPhone.length < 7) {
+      setNewChatError('يرجى إدخال رقم هاتف صحيح مع رمز الدولة (مثال: 201200000000)');
+      return;
+    }
+
+    const phoneWithPrefix = `whatsapp:${cleanedPhone}`;
+
+    const existing = conversations.find(
+      (c) => c.contactPhone.replace('whatsapp:', '').replace('+', '').trim() === cleanedPhone
+    );
+
+    if (existing) {
+      setActiveConversation(existing);
+    } else {
+      const nameVal = newChatName.trim() || `عميل واتساب ${cleanedPhone.substring(cleanedPhone.length - 4)}`;
+      const tempConv: Conversation = {
+        contactId: 'TEMP_' + Date.now(),
+        contactName: nameVal,
+        contactPhone: phoneWithPrefix,
+        unreadCount: 0,
+        messages: [],
+        lastActivity: new Date().toISOString(),
+        lastMessage: undefined
+      };
+      setActiveConversation(tempConv);
+    }
+
+    setNewChatPhone('');
+    setNewChatName('');
+    setIsNewChatOpen(false);
+  };
 
   // تحميل المحادثات وجهات الاتصال عند تشغيل الصفحة
   useEffect(() => {
@@ -127,7 +199,13 @@ export default function WhatsApp() {
   };
 
   // إرسال رسالة أو ملاحظة داخلية
-  const handleSendMessage = async (body: string, isInternal?: boolean) => {
+  const handleSendMessage = async (
+    body: string,
+    isInternal?: boolean,
+    mediaUrl?: string,
+    messageType?: string,
+    fileName?: string
+  ) => {
     if (!activeConversation) return false;
     
     if (isInternal) {
@@ -139,7 +217,7 @@ export default function WhatsApp() {
           .insert({
             conversation_id: conversationId,
             direction: 'outbound',
-            content: body,
+            content: mediaUrl || body,
             message_type: 'internal',
             status: 'delivered',
             sent_at: new Date().toISOString()
@@ -175,8 +253,8 @@ export default function WhatsApp() {
         return false;
       }
     } else {
-      // إرسال رسالة حقيقية عبر Twilio
-      return send(body);
+      // إرسال رسالة حقيقية عبر Twilio/Meta
+      return send(body, mediaUrl, messageType, fileName);
     }
   };
 
@@ -272,8 +350,51 @@ export default function WhatsApp() {
         conversations={conversations}
         activeConversation={activeConversation}
         onSelect={setActiveConversation}
+        onNewChat={() => setIsNewChatOpen(true)}
+        onDeleteConversation={handleDeleteConversationClick}
         isLoading={isLoading}
       />
+
+      {/* مودال بدء محادثة جديدة */}
+      <Modal
+        isOpen={isNewChatOpen}
+        onClose={() => setIsNewChatOpen(false)}
+        title="بدء محادثة واتساب جديدة"
+        size="sm"
+      >
+        <form onSubmit={handleCreateNewChat} className="space-y-4">
+          <Input
+            label="رقم الهاتف (مع رمز الدولة بدون +)"
+            placeholder="مثال: 201200000000"
+            value={newChatPhone}
+            onChange={(e) => setNewChatPhone(e.target.value)}
+            required
+          />
+          <Input
+            label="اسم العميل (اختياري)"
+            placeholder="مثال: محمد أحمد"
+            value={newChatName}
+            onChange={(e) => setNewChatName(e.target.value)}
+          />
+          {newChatError && (
+            <p className="text-red-400 text-xs font-semibold">{newChatError}</p>
+          )}
+          <div className="flex gap-3 justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsNewChatOpen(false)}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="submit"
+            >
+              بدء المحادثة
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* مودال قوالب الرسائل الذكية والتسويقية */}
       <Modal
@@ -352,6 +473,50 @@ export default function WhatsApp() {
             )}
           </div>
 
+        </div>
+      </Modal>
+
+      {/* مودال تأكيد حذف المحادثة */}
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setIsDeleteConfirmOpen(false);
+            setConversationToDelete(null);
+          }
+        }}
+        title="تأكيد حذف المحادثة"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-gray-300 leading-relaxed text-right">
+            هل أنت متأكد من رغبتك في حذف المحادثة مع <span className="text-white font-bold">"{conversationToDelete?.contactName}"</span>؟
+            <br />
+            <span className="text-red-400 font-semibold text-[10px] mt-2 block">
+              ⚠️ تحذير: سيتم حذف كافة الرسائل والبيانات المرتبطة بهذه المحادثة نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء.
+            </span>
+          </p>
+          <div className="flex gap-3 justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => {
+                setIsDeleteConfirmOpen(false);
+                setConversationToDelete(null);
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              isLoading={isDeleting}
+              onClick={handleConfirmDelete}
+            >
+              حذف نهائي
+            </Button>
+          </div>
         </div>
       </Modal>
 

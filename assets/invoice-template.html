@@ -136,8 +136,11 @@
                     <p>رقم الفاتورة: {{invoice_id}}</p>
                     <p>التاريخ: {{invoice_date}}</p>
                 </td>
-                <td class="header-right">
-                    <img src="logo.png" alt="Logo" class="logo">
+                <td class="header-right" style="text-align: left;">
+                    <img src="logo.png" alt="Logo" class="logo" style="display: block; margin-left: 0; margin-right: auto;">
+                    <div style="margin-top: 6px; font-weight: bold; font-size: 14px; color: #111;">{{company_name}}</div>
+                    <div style="font-size: 11px; color: #666; margin-top: 2px;">{{company_address}}</div>
+                    <div style="font-size: 11px; color: #666;">{{company_phone}}</div>
                 </td>
             </tr>
         </table>
@@ -179,7 +182,8 @@
             </table>
 
             <div class="footer">
-                نشكركم لثقتكم في منتجاتنا 🌸
+                <p style="margin: 0; font-size: 12px; font-weight: bold;">{{terms_text}}</p>
+                <div style="margin-top: 5px; font-size: 10px; color: #999;">{{tax_number_section}}</div>
             </div>
         </div>
     </div>
