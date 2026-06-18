@@ -35,11 +35,16 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     customer_phone_2 TEXT,
     customer_address TEXT,
     invoice_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    sub_total NUMERIC(15,2) NOT NULL DEFAULT 0,
+    discount_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    shipping_cost NUMERIC(15,2) NOT NULL DEFAULT 0,
     final_total NUMERIC(15,2) NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'قيد الانتظار',
     notes TEXT,
     shipping_company TEXT,
     tracking_number TEXT,
+    refund_amount NUMERIC(15,2) DEFAULT 0,
+    refund_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -49,9 +54,12 @@ CREATE TABLE IF NOT EXISTS public.invoice_items (
     id SERIAL PRIMARY KEY,
     invoice_id INTEGER REFERENCES public.invoices(invoice_id) ON DELETE CASCADE,
     product_name TEXT NOT NULL,
+    variant_name TEXT,
     quantity INTEGER NOT NULL DEFAULT 1,
     unit_price NUMERIC(15,2) NOT NULL DEFAULT 0,
+    sub_total NUMERIC(15,2) NOT NULL DEFAULT 0,
     total_price NUMERIC(15,2) NOT NULL DEFAULT 0,
+    details TEXT,
     product_id INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
