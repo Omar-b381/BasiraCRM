@@ -2,7 +2,29 @@
 -- 📊 بصيرة CRM — هيكلية جداول قاعدة البيانات السحابية (SQL Schema)
 -- ============================================================
 
--- 1. جدول الموظفين والصلاحيات
+-- 1. جدول تعريف المنتجات الأساسية
+CREATE TABLE IF NOT EXISTS public.product_definitions (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    type TEXT,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2. جدول متغيرات المنتجات (تفاصيل الحجم/اللون والأسعار)
+CREATE TABLE IF NOT EXISTS public.product_variants (
+    id SERIAL PRIMARY KEY,
+    product_name TEXT REFERENCES public.product_definitions(name) ON DELETE CASCADE,
+    variant_name TEXT NOT NULL,
+    price NUMERIC(15,2) NOT NULL DEFAULT 0, -- سعر البيع للعميل
+    cost_price NUMERIC(15,2) NOT NULL DEFAULT 0, -- تكلفة الشراء
+    sku TEXT UNIQUE, -- رمز الباركود أو كود التخزين
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(product_name, variant_name)
+);
+
+-- 3. جدول الموظفين والصلاحيات
 CREATE TABLE IF NOT EXISTS public.system_employees (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -97,6 +119,8 @@ CREATE TABLE IF NOT EXISTS public.print_settings (
 -- ============================================================
 -- 🔒 تفعيل الحماية لجميع الجداول (Row Level Security - RLS)
 -- ============================================================
+ALTER TABLE public.product_definitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
@@ -117,6 +141,18 @@ BEGIN
   RETURN current_setting('request.headers', true)::jsonb->>'x-basira-signature' = 'basira-crm-secure-client-token-2024';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- سياسات جدول المنتجات الأساسية
+CREATE POLICY "Secure client select" ON public.product_definitions FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.product_definitions FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.product_definitions FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.product_definitions FOR DELETE USING (public.is_authorized_client());
+
+-- سياسات جدول متغيرات المنتجات
+CREATE POLICY "Secure client select" ON public.product_variants FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.product_variants FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.product_variants FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.product_variants FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول الموظفين
 CREATE POLICY "Secure client select" ON public.system_employees FOR SELECT USING (public.is_authorized_client());
