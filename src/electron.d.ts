@@ -9,6 +9,10 @@ export interface IElectronAPI {
     meta: (config: any) => Promise<any>;
     webhook: () => Promise<any>;
   };
+  auth: {
+    hashPassword: (password: string) => Promise<{ success: boolean; hash?: string; error?: string }>;
+    verifyPassword: (password: string, hash: string) => Promise<{ success: boolean; isValid?: boolean; error?: string }>;
+  };
   whatsapp: {
     send: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => Promise<any>;
     getConversations: () => Promise<any>;

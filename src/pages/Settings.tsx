@@ -186,6 +186,13 @@ export default function Settings() {
     };
 
     try {
+      // تشفير كلمة المرور قبل الحفظ سحابياً
+      const hashRes = await window.electronAPI.auth.hashPassword(newEmpPassword.trim());
+      if (!hashRes.success || !hashRes.hash) {
+        showTemporarySuccess('❌ فشل تشفير كلمة المرور: ' + (hashRes.error || 'خطأ غير معروف'));
+        return;
+      }
+
       // 1. حفظ الموظف سحابياً في جدول system_employees
       const { error: dbErr } = await supabase
         .from('system_employees')
@@ -193,7 +200,7 @@ export default function Settings() {
           id: newEmp.id,
           name: newEmp.name,
           username: newEmp.username,
-          password: newEmp.password,
+          password: hashRes.hash, // حفظ الهاش المشفر
           role: newEmp.role,
           permissions: newEmp.permissions
         });

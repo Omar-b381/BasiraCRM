@@ -72,15 +72,21 @@ export const useSettingsStore = create<SettingsState>((set) => ({
                   { id: '4', name: 'خالد مصطفى', username: 'khaled', password: '123', role: 'agent', permissions: ['send_messages'] }
                 ];
                 
-                // Insert into Supabase
-                const rowsToInsert = localEmps.map((e: any) => ({
-                  id: e.id,
-                  name: e.name,
-                  username: (e as any).username || 'emp_' + e.id,
-                  password: (e as any).password || '123',
-                  role: e.role,
-                  permissions: e.permissions
-                }));
+                // تشفير كلمات المرور قبل رفعها للسحابة لأول مرة
+                const rowsToInsert = await Promise.all(
+                  localEmps.map(async (e: any) => {
+                    const rawPassword = (e as any).password || '123';
+                    const hashRes = await window.electronAPI.auth.hashPassword(rawPassword);
+                    return {
+                      id: e.id,
+                      name: e.name,
+                      username: (e as any).username || 'emp_' + e.id,
+                      password: hashRes.success && hashRes.hash ? hashRes.hash : rawPassword,
+                      role: e.role,
+                      permissions: e.permissions
+                    };
+                  })
+                );
                 
                 await supabase.from('system_employees').insert(rowsToInsert);
                 dbEmployees = localEmps.map((e: any) => ({

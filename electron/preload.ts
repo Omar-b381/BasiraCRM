@@ -16,6 +16,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     webhook: () => ipcRenderer.invoke('test:webhook'),
   },
 
+  // Auth (hashing and verification)
+  auth: {
+    hashPassword: (password: string) => ipcRenderer.invoke('auth:hashPassword', password),
+    verifyPassword: (password: string, hash: string) => ipcRenderer.invoke('auth:verifyPassword', { password, hash }),
+  },
+
   // WhatsApp
   whatsapp: {
     send: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => 

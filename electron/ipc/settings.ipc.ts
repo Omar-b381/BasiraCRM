@@ -510,4 +510,31 @@ export function setupSettingsIPC(store: Store) {
       };
     }
   });
+
+  // ═══════════════════════════════════════════
+  // تشفير ومطابقة كلمات المرور (bcryptjs)
+  // ═══════════════════════════════════════════
+  ipcMain.handle('auth:hashPassword', async (_, password) => {
+    try {
+      const bcrypt = require('bcryptjs');
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
+      return { success: true, hash };
+    } catch (err) {
+      console.error('Error hashing password:', err);
+      return { success: false, error: 'فشل تشفير كلمة المرور' };
+    }
+  });
+
+  ipcMain.handle('auth:verifyPassword', async (_, { password, hash }) => {
+    try {
+      const bcrypt = require('bcryptjs');
+      const isValid = await bcrypt.compare(password, hash);
+      return { success: true, isValid };
+    } catch (err) {
+      console.error('Error verifying password:', err);
+      return { success: false, error: 'فشل التحقق من كلمة المرور' };
+    }
+  });
 }
+

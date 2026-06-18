@@ -25,7 +25,6 @@ export default function Login() {
         .from('system_employees')
         .select('*')
         .eq('username', username.trim())
-        .eq('password', password.trim())
         .maybeSingle();
 
       if (dbErr) {
@@ -33,6 +32,26 @@ export default function Login() {
       }
 
       if (!data) {
+        setError('خطأ: اسم المستخدم أو كلمة المرور غير صحيحة');
+        setIsLoading(false);
+        return;
+      }
+
+      // التحقق من كلمة المرور (سواء كانت مشفرة بـ bcrypt أو نص عادي كبديل توافقي للمستخدمين القدامى)
+      let isValid = false;
+      if (data.password.startsWith('$2a$') || data.password.startsWith('$2b$')) {
+        const verifyRes = await window.electronAPI.auth.verifyPassword(password.trim(), data.password);
+        if (verifyRes.success && verifyRes.isValid) {
+          isValid = true;
+        }
+      } else {
+        // دعم توافقي مؤقت لكلمات المرور القديمة غير المشفرة
+        if (data.password === password.trim()) {
+          isValid = true;
+        }
+      }
+
+      if (!isValid) {
         setError('خطأ: اسم المستخدم أو كلمة المرور غير صحيحة');
       } else {
         login({
