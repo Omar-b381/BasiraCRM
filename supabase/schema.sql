@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     customer_phone_2 TEXT,
     customer_address TEXT,
     invoice_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    final_total DOUBLE PRECISION NOT NULL DEFAULT 0,
+    final_total NUMERIC(15,2) NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'قيد الانتظار',
     notes TEXT,
     shipping_company TEXT,
@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS public.invoice_items (
     invoice_id INTEGER REFERENCES public.invoices(invoice_id) ON DELETE CASCADE,
     product_name TEXT NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
-    unit_price DOUBLE PRECISION NOT NULL DEFAULT 0,
-    total_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+    unit_price NUMERIC(15,2) NOT NULL DEFAULT 0,
+    total_price NUMERIC(15,2) NOT NULL DEFAULT 0,
     product_id INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
