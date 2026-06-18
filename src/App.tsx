@@ -41,6 +41,15 @@ export default function App() {
     });
   }, [fetchSettings]);
 
+  // مزامنة حالة الموظف النشط وجلسة تسجيل الدخول مع خادم الديسكتوب IPC
+  useEffect(() => {
+    if (isLoggedIn && currentEmployee) {
+      window.electronAPI.auth.sessionLogin(currentEmployee);
+    } else {
+      window.electronAPI.auth.sessionLogout();
+    }
+  }, [isLoggedIn, currentEmployee]);
+
   if (initialLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white" style={{ backgroundColor: '#070033' }}>

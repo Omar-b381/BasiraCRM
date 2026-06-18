@@ -7,6 +7,7 @@ import fs from 'fs';
 import ws from 'ws';
 import { buildInvoiceHtml } from '../pdf/invoiceHtmlBuilder';
 import type { InvoiceDraft } from '../../src/types/invoice.types';
+import { enforcePermission } from './session';
 
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  ⚠️ عمليات DB المسموحة هنا فقط:                              ║
@@ -51,6 +52,7 @@ export function setupInvoiceIPC(store: Store) {
   // ═══════════════════════════════════════════
   ipcMain.handle('invoice:searchCustomer', async (_, query: string) => {
     try {
+      enforcePermission('edit_invoices');
       const client = getClient();
       const { data, error } = await client
         .from('customers')
@@ -74,6 +76,7 @@ export function setupInvoiceIPC(store: Store) {
   // ═══════════════════════════════════════════
   ipcMain.handle('invoice:create', async (_, draft: InvoiceDraft) => {
     try {
+      enforcePermission('edit_invoices');
       const client = getClient();
 
       // الخطوة 1: إدراج الفاتورة الرئيسية
@@ -171,6 +174,7 @@ export function setupInvoiceIPC(store: Store) {
   // ═══════════════════════════════════════════
   ipcMain.handle('invoice:update', async (_, payload: any) => {
     try {
+      enforcePermission('edit_invoices');
       const client = getClient();
 
       // التحقق من توافقية البايلود القديم { invoiceId, status, notes }
@@ -310,6 +314,7 @@ export function setupInvoiceIPC(store: Store) {
   // ═══════════════════════════════════════════
   ipcMain.handle('invoice:cancel', async (_, invoiceId: number, reason?: string) => {
     try {
+      enforcePermission('edit_invoices');
       if (!invoiceId || typeof invoiceId !== 'number') {
         return { success: false, error: 'رقم الفاتورة غير صالح' };
       }

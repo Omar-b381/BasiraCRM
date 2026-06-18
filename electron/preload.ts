@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   auth: {
     hashPassword: (password: string) => ipcRenderer.invoke('auth:hashPassword', password),
     verifyPassword: (password: string, hash: string) => ipcRenderer.invoke('auth:verifyPassword', { password, hash }),
+    sessionLogin: (employee: unknown) => ipcRenderer.invoke('auth:sessionLogin', employee),
+    sessionLogout: () => ipcRenderer.invoke('auth:sessionLogout'),
   },
 
   // WhatsApp

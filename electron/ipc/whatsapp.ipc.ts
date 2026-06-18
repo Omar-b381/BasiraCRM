@@ -4,6 +4,7 @@ import type Store from 'electron-store';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import ws from 'ws';
 import Pusher from 'pusher-js';
+import { enforcePermission } from './session';
 
 interface TwilioConfig {
   accountSid: string;
@@ -315,6 +316,7 @@ export function setupWhatsAppIPC(store: Store) {
   // إرسال رسالة WhatsApp
   ipcMain.handle('whatsapp:send', async (_, { to, body, mediaUrl, messageType, fileName }) => {
     try {
+      enforcePermission('send_messages');
       const supabase = getSupabaseClient();
 
       // الحصول على مزود الخدمة النشط
@@ -457,6 +459,7 @@ export function setupWhatsAppIPC(store: Store) {
   // جلب المحادثات من Supabase
   ipcMain.handle('whatsapp:getConversations', async () => {
     try {
+      enforcePermission('send_messages');
       const supabase = getSupabaseClient();
 
       // تهيئة الاشتراك اللحظي التلقائي
@@ -534,6 +537,7 @@ export function setupWhatsAppIPC(store: Store) {
   // جلب الرسائل لجلسة محددة من الهاتف
   ipcMain.handle('whatsapp:getMessages', async (_, contactPhone) => {
     try {
+      enforcePermission('send_messages');
       const supabase = getSupabaseClient();
       const cleanPhone = contactPhone.replace('whatsapp:', '').replace('+', '').trim();
 
@@ -647,6 +651,7 @@ export function setupWhatsAppIPC(store: Store) {
   // حذف محادثة ورسائلها
   ipcMain.handle('whatsapp:deleteConversation', async (_, conversationId: number) => {
     try {
+      enforcePermission('send_messages');
       const supabase = getSupabaseClient();
 
       // 1. حذف الرسائل التابعة للمحادثة أولاً لتجنب مشاكل Foreign Key

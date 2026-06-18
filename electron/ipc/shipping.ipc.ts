@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import ws from 'ws';
 import ExcelJS from 'exceljs';
+import { enforcePermission } from './session';
 
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  IPC Handlers — شاشة تصدير Excel لشركة الشحن                ║
@@ -46,6 +47,7 @@ export function setupShippingIPC(store: Store) {
   // ═══════════════════════════════════════════════════════
   ipcMain.handle('shipping:getInvoicesForExport', async (_, filters: any) => {
     try {
+      enforcePermission('edit_invoices');
       const client = getClient();
 
       // بناء الاستعلام الأساسي على الفواتير
@@ -177,6 +179,7 @@ export function setupShippingIPC(store: Store) {
   // ═══════════════════════════════════════════════════════
   ipcMain.handle('shipping:exportExcel', async (_, rows: any[]) => {
     try {
+      enforcePermission('edit_invoices');
       if (!rows || rows.length === 0) {
         return { success: false, error: 'لا توجد بيانات للتصدير' };
       }
@@ -286,6 +289,7 @@ export function setupShippingIPC(store: Store) {
   // ═══════════════════════════════════════════════════════
   ipcMain.handle('shipping:parseExcelForTracking', async () => {
     try {
+      enforcePermission('edit_invoices');
       const { filePaths, canceled } = await dialog.showOpenDialog({
         title: 'اختر ملف شركة الشحن للمطابقة',
         filters: [{ name: 'Excel Files', extensions: ['xlsx', 'xls'] }],
@@ -393,6 +397,7 @@ export function setupShippingIPC(store: Store) {
   // ═══════════════════════════════════════════════════════
   ipcMain.handle('shipping:updateStatuses', async (_, updates: Array<{ invoiceId: number; status: string }>) => {
     try {
+      enforcePermission('edit_invoices');
       if (!updates || updates.length === 0) {
         return { success: false, error: 'لا توجد تحديثات لتطبيقها' };
       }
@@ -432,6 +437,7 @@ export function setupShippingIPC(store: Store) {
   // ═══════════════════════════════════════════════════════
   ipcMain.handle('shipping:getDbStats', async () => {
     try {
+      enforcePermission('view_reports');
       const client = getClient();
       
       const { count: total, error: errTotal } = await client

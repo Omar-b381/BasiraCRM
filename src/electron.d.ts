@@ -12,6 +12,8 @@ export interface IElectronAPI {
   auth: {
     hashPassword: (password: string) => Promise<{ success: boolean; hash?: string; error?: string }>;
     verifyPassword: (password: string, hash: string) => Promise<{ success: boolean; isValid?: boolean; error?: string }>;
+    sessionLogin: (employee: any) => Promise<{ success: boolean }>;
+    sessionLogout: () => Promise<{ success: boolean }>;
   };
   whatsapp: {
     send: (to: string, body: string, mediaUrl?: string, messageType?: string, fileName?: string) => Promise<any>;

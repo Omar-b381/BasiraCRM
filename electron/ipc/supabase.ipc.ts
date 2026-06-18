@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type Store from 'electron-store';
 import ws from 'ws';
+import { enforcePermission } from './session';
 
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  ⚠️ SUPABASE IPC HANDLER                                      ║
@@ -52,6 +53,7 @@ export function setupSupabaseIPC(store: Store) {
   // ✅ جلب جهات الاتصال (SELECT من جدول customers)
   ipcMain.handle('db:getContacts', async (_, filters) => {
     try {
+      enforcePermission('send_messages');
       const client = getClient();
 
       let query = client
@@ -92,6 +94,7 @@ export function setupSupabaseIPC(store: Store) {
   // ✅ جلب تفاصيل عميل بالـ ID مع فواتيره (SELECT)
   ipcMain.handle('db:getContactById', async (_, id) => {
     try {
+      enforcePermission('send_messages');
       const client = getClient();
 
       // جلب بيانات العميل
@@ -141,6 +144,7 @@ export function setupSupabaseIPC(store: Store) {
   // ✅ جلب بيانات RFM للتحليل (SELECT من invoices مع invoice_items)
   ipcMain.handle('db:getRFMData', async (_, dateRange) => {
     try {
+      enforcePermission('view_reports');
       const client = getClient();
 
       const fromDate = dateRange?.from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
@@ -185,6 +189,7 @@ export function setupSupabaseIPC(store: Store) {
   // ✅ جلب مزودي خدمة واتساب من الجدول
   ipcMain.handle('db:getProviders', async () => {
     try {
+      enforcePermission('manage_settings');
       const client = getClient();
       const { data, error } = await client
         .from('whatsapp_providers')
@@ -204,6 +209,7 @@ export function setupSupabaseIPC(store: Store) {
   // ✅ حفظ أو تحديث إعدادات مزود الخدمة
   ipcMain.handle('db:saveProvider', async (_, provider) => {
     try {
+      enforcePermission('manage_settings');
       const client = getClient();
       const { id, ...updateData } = provider;
 

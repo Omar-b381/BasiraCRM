@@ -3,6 +3,7 @@ import type Store from 'electron-store';
 import { createClient } from '@supabase/supabase-js';
 import Twilio from 'twilio';
 import ws from 'ws';
+import { setSessionEmployee, enforcePermission } from './session';
 
 // تنظيف قيم الإعدادات من الاقتباسات الزائدة
 const cleanValue = (val?: string): string => {
@@ -160,12 +161,14 @@ export function setupSettingsIPC(store: Store) {
 
   // حفظ الإعدادات (محلياً وسحابياً)
   ipcMain.handle('settings:save', async (_, settings) => {
-    if (!settings || typeof settings !== 'object') {
-      return { success: false, error: 'بيانات غير صالحة' };
-    }
-    
-    // تنظيف المفاتيح قبل الحفظ
-    const cleaned = {
+    try {
+      enforcePermission('manage_settings');
+      if (!settings || typeof settings !== 'object') {
+        return { success: false, error: 'بيانات غير صالحة' };
+      }
+      
+      // تنظيف المفاتيح قبل الحفظ
+      const cleaned = {
       supabase: {
         url: cleanValue((settings as any).supabase?.url),
         anonKey: cleanValue((settings as any).supabase?.anonKey),
@@ -326,6 +329,9 @@ export function setupSettingsIPC(store: Store) {
     }
 
     return { success: true, message: 'تم حفظ الإعدادات بنجاح وسحابياً' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'حدث خطأ أثناء حفظ الإعدادات' };
+    }
   });
 
   // ═══════════════════════════════════════════
@@ -552,6 +558,19 @@ export function setupSettingsIPC(store: Store) {
       console.error('Error verifying password:', err);
       return { success: false, error: 'فشل التحقق من كلمة المرور' };
     }
+  });
+
+  // ═══════════════════════════════════════════
+  // إدارة الجلسة النشطة (Session Management)
+  // ═══════════════════════════════════════════
+  ipcMain.handle('auth:sessionLogin', async (_, employee) => {
+    setSessionEmployee(employee);
+    return { success: true };
+  });
+
+  ipcMain.handle('auth:sessionLogout', async () => {
+    setSessionEmployee(null);
+    return { success: true };
   });
 }
 
