@@ -11,7 +11,13 @@ const defaultAnonKey = cleanEnvVar((import.meta as any).env.VITE_SUPABASE_ANON_K
 
 let activeUrl = defaultUrl;
 let activeKey = defaultAnonKey;
-let activeClient = createClient(defaultUrl, defaultAnonKey);
+let activeClient = createClient(defaultUrl, defaultAnonKey, {
+  global: {
+    headers: {
+      'x-basira-signature': 'basira-crm-secure-client-token-2024'
+    }
+  }
+});
 
 export const updateSupabaseClient = (url: string, anonKey: string) => {
   const cleanUrl = cleanEnvVar(url);
@@ -23,7 +29,13 @@ export const updateSupabaseClient = (url: string, anonKey: string) => {
     }
     activeUrl = cleanUrl;
     activeKey = cleanKey;
-    activeClient = createClient(cleanUrl, cleanKey);
+    activeClient = createClient(cleanUrl, cleanKey, {
+      global: {
+        headers: {
+          'x-basira-signature': 'basira-crm-secure-client-token-2024'
+        }
+      }
+    });
   }
 };
 

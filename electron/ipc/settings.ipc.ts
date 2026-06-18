@@ -23,7 +23,12 @@ export function setupSettingsIPC(store: Store) {
 
     return createClient(url.replace(/[”"']/g, '').trim(), anonKey.replace(/[”"']/g, '').trim(), {
       auth: { persistSession: false },
-      realtime: { transport: ws as any }
+      realtime: { transport: ws as any },
+      global: {
+        headers: {
+          'x-basira-signature': 'basira-crm-secure-client-token-2024'
+        }
+      }
     });
   };
 
@@ -206,7 +211,12 @@ export function setupSettingsIPC(store: Store) {
       if (cleaned.supabase.url && cleaned.supabase.anonKey) {
         const supabase = createClient(cleaned.supabase.url, cleaned.supabase.anonKey, {
           auth: { persistSession: false },
-          realtime: { transport: ws as any }
+          realtime: { transport: ws as any },
+          global: {
+            headers: {
+              'x-basira-signature': 'basira-crm-secure-client-token-2024'
+            }
+          }
         });
         
         // Twilio Data
@@ -335,7 +345,14 @@ export function setupSettingsIPC(store: Store) {
         };
       }
 
-      const client = createClient(url, anonKey, { realtime: { transport: ws as any } });
+      const client = createClient(url, anonKey, {
+        realtime: { transport: ws as any },
+        global: {
+          headers: {
+            'x-basira-signature': 'basira-crm-secure-client-token-2024'
+          }
+        }
+      });
 
       // ✅ اختبار آمن — فقط SELECT بدون تعديل
       const { error } = await client

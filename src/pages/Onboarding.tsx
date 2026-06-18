@@ -27,7 +27,13 @@ export default function Onboarding() {
 
     try {
       // 1. اختبار الاتصال بالمشروع سحابياً
-      const testClient = createClient(cleanUrl, cleanKey);
+      const testClient = createClient(cleanUrl, cleanKey, {
+        global: {
+          headers: {
+            'x-basira-signature': 'basira-crm-secure-client-token-2024'
+          }
+        }
+      });
       
       // نقوم بمحاولة قراءة جدول الموظفين للتحقق من الاتصال ووجود الجداول
       const { data, error: dbErr } = await testClient

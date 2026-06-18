@@ -40,6 +40,7 @@ export function setupSupabaseIPC(store: Store) {
         global: {
           headers: {
             'X-Client-Info': 'arabic-crm/1.0.0',
+            'x-basira-signature': 'basira-crm-secure-client-token-2024'
           },
         },
       });

@@ -97,41 +97,51 @@ ALTER TABLE public.whatsapp_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.print_settings ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 🔓 سياسات الوصول العام (Allow public access using Anon Key)
+-- 🔓 سياسات الوصول المؤمنة (Secure Access Policies using Context Signature)
 -- ============================================================
 
+-- دالة مساعدة للتحقق من هوية ومصدر الطلب القادم من تطبيق الديسكتوب
+-- نستخدم ترويسة (Header) مخصصة 'x-basira-signature' تحتوي على رمز تحقق متفق عليه لمنع الوصول العشوائي للبيانات عبر الـ Anon Key
+CREATE OR REPLACE FUNCTION public.is_authorized_client()
+RETURNS BOOLEAN AS $$
+BEGIN
+  -- التحقق من وجود الترويسة المخصصة وصحة قيمتها لمنع استعلامات الـ REST API الخارجية غير المصرحة
+  RETURN current_setting('request.headers', true)::jsonb->>'x-basira-signature' = 'basira-crm-secure-client-token-2024';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- سياسات جدول الموظفين
-CREATE POLICY "Allow public select" ON public.system_employees FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.system_employees FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.system_employees FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.system_employees FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.system_employees FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.system_employees FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.system_employees FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.system_employees FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول العملاء
-CREATE POLICY "Allow public select" ON public.customers FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.customers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.customers FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.customers FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.customers FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.customers FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.customers FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.customers FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول الفواتير
-CREATE POLICY "Allow public select" ON public.invoices FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.invoices FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.invoices FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.invoices FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.invoices FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.invoices FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.invoices FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.invoices FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول بنود الفواتير
-CREATE POLICY "Allow public select" ON public.invoice_items FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.invoice_items FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.invoice_items FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.invoice_items FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.invoice_items FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.invoice_items FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.invoice_items FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.invoice_items FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول مزودي الخدمة
-CREATE POLICY "Allow public select" ON public.whatsapp_providers FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.whatsapp_providers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.whatsapp_providers FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.whatsapp_providers FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.whatsapp_providers FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.whatsapp_providers FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.whatsapp_providers FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.whatsapp_providers FOR DELETE USING (public.is_authorized_client());
 
 -- سياسات جدول إعدادات الطباعة
-CREATE POLICY "Allow public select" ON public.print_settings FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.print_settings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.print_settings FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.print_settings FOR DELETE USING (true);
+CREATE POLICY "Secure client select" ON public.print_settings FOR SELECT USING (public.is_authorized_client());
+CREATE POLICY "Secure client insert" ON public.print_settings FOR INSERT WITH CHECK (public.is_authorized_client());
+CREATE POLICY "Secure client update" ON public.print_settings FOR UPDATE USING (public.is_authorized_client());
+CREATE POLICY "Secure client delete" ON public.print_settings FOR DELETE USING (public.is_authorized_client());
