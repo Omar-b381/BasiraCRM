@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck, ClipboardCheck, ClipboardList, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Megaphone, BarChart3, Settings, Bot, FileText, Truck, ClipboardCheck, ClipboardList, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import TasksBadge from '../tasks/TasksBadge';
 
@@ -11,6 +11,7 @@ export default function Sidebar() {
     { name: 'لوحة التحكم', path: '/', icon: LayoutDashboard, requiredPermission: 'view_reports' },
     { name: 'جهات الاتصال', path: '/contacts', icon: Users, requiredPermission: 'send_messages' },
     { name: 'محادثات واتساب', path: '/whatsapp', icon: MessageSquare, requiredPermission: 'send_messages' },
+    { name: 'الحملات التسويقية', path: '/campaigns', icon: Megaphone, requiredPermission: 'send_messages' },
     { name: 'تحليل العملاء RFM', path: '/rfm', icon: BarChart3, requiredPermission: 'view_reports' },
     { name: 'الفواتير والطباعة',    path: '/invoices',         icon: FileText, requiredPermission: 'edit_invoices' },
     { name: 'تصدير الشحن',          path: '/shipping-export',  icon: Truck, requiredPermission: 'edit_invoices' },

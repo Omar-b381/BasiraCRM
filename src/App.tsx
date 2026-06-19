@@ -12,6 +12,7 @@ import OrderTracking from './pages/OrderTracking';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import Tasks from './pages/Tasks';
+import Campaigns from './pages/Campaigns';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useAuthStore } from './store/useAuthStore';
 import { useTasksStore } from './store/useTasksStore';
@@ -100,6 +101,7 @@ export default function App() {
           <Route index element={<IndexRedirect />} />
           {hasPermission('send_messages') && <Route path="contacts" element={<Contacts />} />}
           {hasPermission('send_messages') && <Route path="whatsapp" element={<WhatsApp />} />}
+          {hasPermission('send_messages') && <Route path="campaigns" element={<Campaigns />} />}
           {hasPermission('view_reports') && <Route path="rfm" element={<RFMAnalysis />} />}
           {hasPermission('edit_invoices') && <Route path="invoices" element={<InvoiceCreate />} />}
           {hasPermission('edit_invoices') && <Route path="shipping-export" element={<ShippingExport />} />}

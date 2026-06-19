@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, Sparkles, RefreshCw, Send, Loader2, Users, ShoppingBag, AlertCircle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, Sparkles, RefreshCw, Send, Loader2, Users, ShoppingBag, AlertCircle, CheckCircle, Megaphone } from 'lucide-react';
 import { useRFM } from '../hooks/useRFM';
 import { RFM_SEGMENTS_CONFIG } from '../types/rfm.types';
 import type { RFMSegment } from '../types/contact.types';
@@ -18,10 +19,7 @@ export default function RFMAnalysis() {
   } = useRFM();
 
   const [selectedSegment, setSelectedSegment] = useState<RFMSegment>('champions');
-  const [campaignName, setCampaignName] = useState('');
-  const [campaignMessage, setCampaignMessage] = useState('');
-  const [isSendingCampaign, setIsSendingCampaign] = useState(false);
-  const [campaignSuccess, setCampaignSuccess] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     runAnalysis();
@@ -54,75 +52,7 @@ export default function RFMAnalysis() {
 
   const affinities = getProductAffinities();
 
-  // وضع القالب الافتراضي للشريحة كرسالة للحملة
-  useEffect(() => {
-    const defaultTemplate = RFM_SEGMENTS_CONFIG[selectedSegment]?.whatsappTemplate || '';
-    setCampaignMessage(defaultTemplate);
-    setCampaignName(`حملة استهداف شريحة: ${RFM_SEGMENTS_CONFIG[selectedSegment]?.nameAr || selectedSegment}`);
-  }, [selectedSegment]);
-
-  // إطلاق حملة تسويقية جماعية
-  const handleLaunchCampaign = async () => {
-    if (!campaignName.trim() || !campaignMessage.trim()) return;
-    setIsSendingCampaign(true);
-    setCampaignSuccess(null);
-
-    try {
-      // 1. الحصول على معرّف مزود Twilio من قاعدة البيانات
-      const { data: provider } = await supabase
-        .from('whatsapp_providers')
-        .select('id')
-        .eq('type', 'twilio')
-        .limit(1)
-        .maybeSingle();
-
-      const providerId = provider?.id || null;
-
-      // 2. إدراج الحملة في جدول campaigns
-      const { data: newCampaign, error: campError } = await supabase
-        .from('campaigns')
-        .insert({
-          name: campaignName,
-          provider_id: providerId,
-          template_content: campaignMessage,
-          target_segment: selectedSegment,
-          status: 'sent',
-          sent_count: segmentCustomers.length,
-          delivered_count: segmentCustomers.length,
-          read_count: 0,
-          failed_count: 0
-        })
-        .select('id')
-        .single();
-
-      if (campError) throw campError;
-
-      // 3. إدراج السجلات في جدول notifications_log لكل عميل في الشريحة
-      const logs = segmentCustomers.map(cust => ({
-        customer_id: cust.id,
-        type: 'whatsapp',
-        status: 'sent',
-        sent_at: new Date().toISOString(),
-        provider_id: providerId,
-        message_content: campaignMessage.replace(/{name}/g, cust.name)
-      }));
-
-      if (logs.length > 0) {
-        const { error: logError } = await supabase
-          .from('notifications_log')
-          .insert(logs);
-        if (logError) throw logError;
-      }
-
-      setCampaignSuccess(`✅ تم إطلاق الحملة بنجاح! تم تسجيل إرسال ${segmentCustomers.length} رسالة للعملاء في هذه الشريحة.`);
-      setCampaignName('');
-      setCampaignMessage('');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSendingCampaign(false);
-    }
-  };
+  // Selected segment affinities and details are handled below
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-16" dir="rtl">
@@ -272,48 +202,44 @@ export default function RFMAnalysis() {
 
               {/* إطلاق حملة تسويقية جماعية للشريحة */}
               <div className="space-y-6">
-                <section className="glass rounded-3xl p-6 space-y-4">
+                <section className="glass rounded-3xl p-6 space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                  
                   <div className="border-b border-gray-800/60 pb-3">
-                    <h3 className="text-xs font-bold text-white">إطلاق حملة واتساب استهدافية للشريحة</h3>
-                    <p className="text-[10px] text-gray-500 mt-1 font-semibold">إرسال رسالة جماعية سحابية لكافة جهات الاتصال في هذه الشريحة</p>
+                    <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                      <Megaphone className="w-4 h-4 text-orange-500" />
+                      إطلاق حملة تسويقية ذكية
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-1 font-semibold">استهدف كافة العملاء المنتمين لهذه الشريحة عبر قنوات واتساب</p>
                   </div>
 
-                  {campaignSuccess && (
-                    <div className="p-3 bg-emerald-950/20 border border-emerald-500/10 text-emerald-400 rounded-2xl text-[11px] leading-relaxed">
-                      {campaignSuccess}
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-3">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-gray-400">عدد العملاء المستهدفين:</span>
+                      <span className="text-white">{segmentCustomers.length} عميل</span>
                     </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <Input
-                      label="اسم الحملة"
-                      placeholder="أدخل اسماً للحملة التسويقية"
-                      value={campaignName}
-                      onChange={(e) => setCampaignName(e.target.value)}
-                    />
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1.5">محتوى الرسالة</label>
-                      <textarea
-                        rows={6}
-                        placeholder="أدخل نص الرسالة التسويقية..."
-                        value={campaignMessage}
-                        onChange={(e) => setCampaignMessage(e.target.value)}
-                        className="w-full bg-gray-900/50 border border-gray-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-xs text-gray-200 focus:outline-none resize-none p-3.5 rounded-2xl leading-relaxed placeholder-gray-500 font-semibold"
-                      />
-                      <span className="text-[9px] text-gray-500 mt-1 block">يمكنك استخدام متغير <code>{"{name}"}</code> لتعويض اسم كل عميل تلقائياً عند الإرسال.</span>
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-gray-400">القالب المقترح للرسالة:</span>
+                      <span className="text-orange-400 truncate max-w-[60%]">{RFM_SEGMENTS_CONFIG[selectedSegment]?.whatsappTemplate || 'بدون قالب'}</span>
                     </div>
-
-                    <Button
-                      onClick={handleLaunchCampaign}
-                      isLoading={isSendingCampaign}
-                      disabled={segmentCustomers.length === 0 || !campaignName.trim() || !campaignMessage.trim()}
-                      className="w-full py-3 rounded-2xl"
-                      icon={<Send className="w-4 h-4 rotate-180" />}
-                    >
-                      إرسال الرسائل لـ {segmentCustomers.length} عملاء
-                    </Button>
                   </div>
+
+                  <Button
+                    onClick={() => {
+                      navigate('/campaigns', {
+                        state: {
+                          segment: selectedSegment,
+                          template: RFM_SEGMENTS_CONFIG[selectedSegment]?.whatsappTemplate || ''
+                        }
+                      });
+                    }}
+                    disabled={segmentCustomers.length === 0}
+                    className="w-full py-3 rounded-2xl text-white font-bold"
+                    style={{ background: '#FF6632', boxShadow: '0 4px 16px rgba(255,102,50,0.20)' }}
+                    icon={<Send className="w-4 h-4 rotate-180" />}
+                  >
+                    تجهيز وإطلاق الحملة التسويقية
+                  </Button>
                 </section>
               </div>
 

@@ -27,3 +27,26 @@ export interface Conversation {
   status?: string;
 }
 
+export interface Campaign {
+  id: number;
+  name: string;
+  provider_id?: number | null;
+  template_content?: string | null;
+  target_segment: string;
+  status: 'draft' | 'sending' | 'done' | 'failed' | 'scheduled';
+  scheduled_at?: string | null;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
+  created_at: string;
+}
+
+export interface CampaignProgress {
+  campaignId: number;
+  current: number;
+  total: number;
+  lastContactName: string;
+  status: 'sending' | 'done' | 'error';
+}
+

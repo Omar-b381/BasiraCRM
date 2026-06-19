@@ -21,6 +21,8 @@ export interface IElectronAPI {
     getMessages: (contactPhone: string) => Promise<any>;
     deleteConversation: (id: number) => Promise<any>;
     onMessage: (callback: (msg: any) => void) => void;
+    sendBulkCampaign: (payload: { campaignId: number; contacts: any[]; messageTemplate: string }) => Promise<{ success: boolean; sent?: number; failed?: number; errors?: string[]; error?: string }>;
+    onCampaignProgress: (callback: (progress: any) => void) => void;
   };
   db: {
     getContacts: (filters?: any) => Promise<any>;

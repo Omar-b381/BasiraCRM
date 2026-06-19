@@ -36,6 +36,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeAllListeners('whatsapp:incoming');
       ipcRenderer.on('whatsapp:incoming', (_, msg) => callback(msg));
     },
+    sendBulkCampaign: (payload: { campaignId: number; contacts: any[]; messageTemplate: string }) =>
+      ipcRenderer.invoke('whatsapp:sendBulkCampaign', payload),
+    onCampaignProgress: (callback: (progress: any) => void) => {
+      ipcRenderer.removeAllListeners('campaign-progress');
+      ipcRenderer.on('campaign-progress', (_, progress) => callback(progress));
+    },
   },
 
   // Supabase (limited to specific queries)

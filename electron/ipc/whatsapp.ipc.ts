@@ -678,5 +678,164 @@ export function setupWhatsAppIPC(store: Store) {
       };
     }
   });
-}
 
+  // ✅ إرسال حملة واتساب جماعية (Bulk campaign sender with rate limiting & progress tracking)
+  ipcMain.handle('whatsapp:sendBulkCampaign', async (_, { campaignId, contacts, messageTemplate }) => {
+    try {
+      enforcePermission('send_messages');
+      const supabase = getSupabaseClient();
+      const provider = await getActiveProvider(supabase);
+      
+      const wins = BrowserWindow.getAllWindows();
+      const mainWindow = wins.length > 0 ? wins[0] : null;
+
+      let sentCount = 0;
+      let failedCount = 0;
+      const errors: string[] = [];
+
+      // 1. تهيئة عميل Twilio إذا كان هو المزوّد
+      let twilioClient: any = null;
+      let twilioFrom = '';
+      if (provider.type === 'twilio') {
+        const twilio = await getTwilioClient(supabase);
+        twilioClient = twilio.client;
+        twilioFrom = twilio.fromNumber;
+      }
+
+      // تحديث حالة الحملة لـ "قيد الإرسال"
+      await supabase
+        .from('campaigns')
+        .update({ status: 'sending', sent_count: 0, failed_count: 0 })
+        .eq('id', campaignId);
+
+      for (let i = 0; i < contacts.length; i++) {
+        const contact = contacts[i];
+        // تخصيص محتوى الرسالة ديناميكياً للعميل
+        const personalizedMessage = messageTemplate.replace(/{name}/g, contact.name);
+        
+        let success = false;
+        let errorMsg = '';
+        let messageSid = '';
+
+        try {
+          if (provider.type === 'meta') {
+            let cleanTo = contact.phone.replace('whatsapp:', '').replace('+', '').trim();
+            if (cleanTo.startsWith('01') && cleanTo.length === 11) {
+              cleanTo = '20' + cleanTo.substring(1);
+            } else if (cleanTo.startsWith('1') && cleanTo.length === 10) {
+              cleanTo = '20' + cleanTo;
+            }
+
+            const response = await fetch(`https://graph.facebook.com/v18.0/${provider.api_url}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${provider.api_key}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanTo,
+                type: 'text',
+                text: { preview_url: false, body: personalizedMessage }
+              })
+            });
+
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData?.error?.message || `Meta API Error: ${response.status}`);
+            }
+
+            const resData = await response.json();
+            messageSid = resData.messages?.[0]?.id || `meta_${Date.now()}`;
+            success = true;
+          } else {
+            // Twilio
+            const toNumber = contact.phone.startsWith('whatsapp:') ? contact.phone : `whatsapp:${contact.phone}`;
+            const twilioRes = await twilioClient.messages.create({
+              from: twilioFrom,
+              to: toNumber,
+              body: personalizedMessage
+            });
+            messageSid = twilioRes.sid;
+            success = true;
+          }
+        } catch (err: any) {
+          success = false;
+          errorMsg = err.message || 'خطأ غير معروف';
+          errors.push(`فشل الإرسال إلى ${contact.name}: ${errorMsg}`);
+        }
+
+        if (success) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+
+        // إدراج سجل الإرسال مع التراجع التلقائي إذا لم يتم ترقية الجدول بعد
+        try {
+          const { error: logErr } = await supabase
+            .from('notifications_log')
+            .insert({
+              customer_id: contact.id,
+              type: 'whatsapp',
+              status: success ? 'sent' : 'failed',
+              sent_at: new Date().toISOString(),
+              provider_id: provider.id || null,
+              message_content: personalizedMessage,
+              campaign_id: campaignId
+            });
+
+          if (logErr && logErr.message.includes('campaign_id')) {
+            // محاولة الإدخال بدون campaign_id كخطة تراجع
+            await supabase
+              .from('notifications_log')
+              .insert({
+                customer_id: contact.id,
+                type: 'whatsapp',
+                status: success ? 'sent' : 'failed',
+                sent_at: new Date().toISOString(),
+                provider_id: provider.id || null,
+                message_content: personalizedMessage
+              });
+          }
+        } catch (logErr) {
+          console.warn('Failed to insert into notifications_log:', logErr);
+        }
+
+        // إطلاق حدث التقدم اللحظي للواجهات
+        if (mainWindow) {
+          mainWindow.webContents.send('campaign-progress', {
+            campaignId,
+            current: i + 1,
+            total: contacts.length,
+            lastContactName: contact.name,
+            status: i + 1 === contacts.length ? 'done' : 'sending'
+          });
+        }
+
+        // تأخير زمني قدره 2 ثانية بين كل رسالة لحماية الرقم وتجنب الحظر
+        if (i < contacts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+
+      // تحديث الحالة النهائية للحملة في قاعدة البيانات
+      const finalStatus = failedCount === contacts.length ? 'failed' : 'done';
+      await supabase
+        .from('campaigns')
+        .update({
+          status: finalStatus,
+          sent_count: sentCount,
+          failed_count: failedCount,
+          delivered_count: sentCount
+        })
+        .eq('id', campaignId);
+
+      return { success: true, sent: sentCount, failed: failedCount, errors };
+    } catch (err: any) {
+      console.error('Error in bulk campaign handler:', err);
+      return { success: false, error: err.message || 'فشل إطلاق الحملة التسويقية' };
+    }
+  });
+}

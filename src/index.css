@@ -203,3 +203,68 @@ aside .text-slate-100, aside .text-slate-200 {
 [class*="hover:bg-green-6"]:hover {
   color: #ffffff !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ✨ Custom Helper Classes and Animations for Campaign Manager
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Scoped overrides for dark panels/elements inside mwasemcrm (e.g. whatsapp UI, drawer) */
+.dark-container .text-white,
+.dark-container .text-gray-100,
+.dark-container .text-gray-200,
+.dark-container .text-slate-100,
+.dark-container .text-slate-200 {
+  color: #ffffff !important;
+}
+
+.dark-container .text-gray-300,
+.dark-container .text-gray-400,
+.dark-container .text-slate-300,
+.dark-container .text-slate-400 {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.dark-container .text-gray-500,
+.dark-container .text-slate-500,
+.dark-container .text-gray-600,
+.dark-container .text-slate-600 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Ensure bright, readable status colors on dark backgrounds */
+.dark-container .text-emerald-400,
+.dark-container .text-emerald-500 {
+  color: #10B981 !important; /* emerald-500 */
+}
+.dark-container .text-rose-400,
+.dark-container .text-red-400,
+.dark-container .text-rose-500 {
+  color: #FB7185 !important; /* rose-400 */
+}
+.dark-container .text-orange-400 {
+  color: #FB923C !important; /* orange-400 */
+}
+.dark-container .text-indigo-400 {
+  color: #818CF8 !important; /* indigo-400 */
+}
+
+
+/* Custom CSS Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-slide-left {
+  animation: slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
