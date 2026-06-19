@@ -23,7 +23,7 @@ export default function CampaignProgressBar({
   const isDone = status === 'done' || (current === total && total > 0);
 
   return (
-    <div className="glass rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden bg-[#070033]/90 dark-container">
+    <div className="rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden bg-[#070033] dark-container">
       {/* Decorative gradient overlay */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF6632]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 

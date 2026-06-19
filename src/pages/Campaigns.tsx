@@ -243,10 +243,10 @@ export default function Campaigns() {
             onClick={() => setActiveTab('build')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'build'
-                ? 'bg-orange-500 text-white shadow-lg'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-white bg-orange-600'
+                : 'text-gray-700 hover:text-gray-900'
             }`}
-            style={activeTab === 'build' ? { background: '#FF6632', boxShadow: '0 4px 16px rgba(255,102,50,0.30)' } : {}}
+            style={activeTab === 'build' ? { boxShadow: '0 4px 16px rgba(255,102,50,0.30)' } : {}}
           >
             <Sparkles className="w-4 h-4" />
             بناء حملة جديدة
@@ -259,10 +259,10 @@ export default function Campaigns() {
             }}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'history'
-                ? 'bg-orange-500 text-white shadow-lg'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-white bg-orange-600'
+                : 'text-gray-700 hover:text-gray-900'
             }`}
-            style={activeTab === 'history' ? { background: '#FF6632', boxShadow: '0 4px 16px rgba(255,102,50,0.30)' } : {}}
+            style={activeTab === 'history' ? { boxShadow: '0 4px 16px rgba(255,102,50,0.30)' } : {}}
           >
             <History className="w-4 h-4" />
             سجل الحملات السابقة

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   User, Shield, ShoppingBag, Clock, Smile, Meh, Frown,
   AlertTriangle, MessageSquare, History, CheckCircle, 
@@ -31,6 +32,7 @@ export default function CustomerDataPanel({
   employees = [],
   activeEmployeeId = ''
 }: CustomerDataPanelProps) {
+  const navigate = useNavigate();
   // Find current active employee name
   const activeEmp = employees.find(e => e.id === activeEmployeeId);
 
@@ -155,6 +157,18 @@ export default function CustomerDataPanel({
           <Sparkles className="w-3.5 h-3.5" />
           <span>شريحة العميل: {segmentInfo.nameAr}</span>
         </div>
+
+        {/* زر الانتقال للملف التعريفي الكامل */}
+        <button
+          onClick={() => {
+            const targetId = contact?.id || activeConversation.contactId;
+            if (targetId) navigate(`/customers/${targetId}`);
+          }}
+          className="w-full mt-2 py-2 bg-indigo-600/10 hover:bg-indigo-500 text-indigo-400 hover:text-white border border-indigo-500/15 hover:border-transparent rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+        >
+          <User className="w-3.5 h-3.5" />
+          <span>الملف الكامل 360°</span>
+        </button>
       </div>
 
       <div className="p-5 space-y-6 flex-1">

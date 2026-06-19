@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   db: {
     getContacts: (filters?: unknown) => ipcRenderer.invoke('db:getContacts', filters),
     getContactById: (id: string) => ipcRenderer.invoke('db:getContactById', id),
+    getCustomerProfile: (id: string) => ipcRenderer.invoke('db:getCustomerProfile', id),
     getRFMData: (dateRange?: unknown) => ipcRenderer.invoke('db:getRFMData', dateRange),
     getProviders: () => ipcRenderer.invoke('db:getProviders'),
     saveProvider: (provider: unknown) => ipcRenderer.invoke('db:saveProvider', provider),

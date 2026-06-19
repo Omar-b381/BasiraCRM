@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MessageCircle, Sparkles, Loader2, BookOpen } from 'lucide-react';
 import { useWhatsApp } from '../hooks/useWhatsApp';
 import { useContactsStore } from '../store/useContactsStore';
@@ -15,6 +16,8 @@ import type { Conversation } from '../types/message.types';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export default function WhatsApp() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { settings } = useSettingsStore();
   const {
     conversations,
@@ -116,6 +119,40 @@ export default function WhatsApp() {
     fetchConversations();
     fetchContacts();
   }, []);
+
+  // التعامل مع تحديد المحادثة القادمة من صفحة تفاصيل العميل (بروفايل العميل الموحد)
+  useEffect(() => {
+    const state = location.state as { selectPhone?: string; selectContactId?: string; selectContactName?: string } | null;
+    if (state?.selectPhone && !isLoading) {
+      const targetPhone = state.selectPhone.replace(/[+\s()-]/g, '').trim();
+      
+      // نبحث عن محادثة قائمة تطابق الرقم أو معرف جهة الاتصال
+      const existing = conversations.find(c => {
+        const cPhone = c.contactPhone.replace('whatsapp:', '').replace('+', '').replace(/[+\s()-]/g, '').trim();
+        return cPhone === targetPhone || c.contactId === state.selectContactId;
+      });
+
+      if (existing) {
+        setActiveConversation(existing);
+      } else {
+        // إذا لم تكن المحادثة قائمة، نقوم بإنشاء محادثة مؤقتة في الواجهة
+        const phoneWithPrefix = state.selectPhone.startsWith('whatsapp:') ? state.selectPhone : `whatsapp:${targetPhone}`;
+        const tempConv: Conversation = {
+          contactId: state.selectContactId || 'TEMP_' + Date.now(),
+          contactName: state.selectContactName || `عميل واتساب ${targetPhone.substring(targetPhone.length - 4)}`,
+          contactPhone: phoneWithPrefix,
+          unreadCount: 0,
+          messages: [],
+          lastActivity: new Date().toISOString(),
+          lastMessage: undefined
+        };
+        setActiveConversation(tempConv);
+      }
+
+      // مسح الـ state لتجنب إعادة تحديد المحادثة عند إعادة تحميل المكون أو التنقل
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, conversations, isLoading, navigate, location.pathname, setActiveConversation]);
 
   // جلب فواتير العميل وتصنيفه السلوكي عند اختيار محادثة
   useEffect(() => {

@@ -30,8 +30,10 @@ export function useRFM() {
 
       setAnalyzedContacts(contactsWithScores);
       setSegmentAffinities(affinities);
+      return { contactsWithScores, segmentAffinities: affinities };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع أثناء تحليل RFM');
+      return null;
     } finally {
       setIsAnalyzing(false);
     }

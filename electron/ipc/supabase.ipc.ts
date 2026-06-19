@@ -141,6 +141,117 @@ export function setupSupabaseIPC(store: Store) {
     }
   });
 
+  // ✅ جلب بروفايل عميل كامل 360 درجة مع الإحصاءات والمنتجات المفضلة (SELECT)
+  ipcMain.handle('db:getCustomerProfile', async (_, customerId) => {
+    try {
+      enforcePermission('send_messages');
+      const client = getClient();
+
+      // 1. جلب بيانات العميل الأساسية
+      const { data: customer, error: custError } = await client
+        .from('customers')
+        .select('*')
+        .eq('customer_id', customerId)
+        .single();
+
+      if (custError) throw custError;
+
+      // 2. جلب فواتير العميل مع عناصر الفاتورة
+      const { data: invoices, error: invError } = await client
+        .from('invoices')
+        .select(`
+          invoice_id,
+          invoice_date,
+          sub_total,
+          discount_amount,
+          final_total,
+          shipping_cost,
+          status,
+          notes,
+          invoice_items (
+            item_id,
+            product_name,
+            details,
+            sub_total,
+            quantity,
+            variant_name
+          )
+        `)
+        .eq('customer_id', customerId)
+        .order('invoice_date', { ascending: false });
+
+      if (invError) throw invError;
+
+      // 3. حساب المؤشرات المالية في الميموري
+      let totalSpent = 0;
+      let totalOrders = 0;
+      let lastPurchaseDate: string | undefined = undefined;
+
+      const validInvoices = invoices || [];
+      for (const inv of validInvoices) {
+        if (inv.status !== 'canceled' && inv.status !== 'draft') {
+          totalSpent += (inv.final_total || 0);
+          totalOrders++;
+          if (!lastPurchaseDate || new Date(inv.invoice_date) > new Date(lastPurchaseDate)) {
+            lastPurchaseDate = inv.invoice_date;
+          }
+        }
+      }
+
+      const avgOrderValue = totalOrders > 0 ? (totalSpent / totalOrders) : 0;
+      const daysSinceLastPurchase = lastPurchaseDate
+        ? Math.floor((Date.now() - new Date(lastPurchaseDate).getTime()) / (1000 * 60 * 60 * 24))
+        : undefined;
+
+      // 4. تجميع المنتجات الأكثر شراءً وترتيبها تنازلياً
+      const productMap: Record<string, { product_name: string; total_quantity: number; total_spent: number; times_ordered: number }> = {};
+
+      for (const inv of validInvoices) {
+        if (inv.status !== 'canceled' && inv.status !== 'draft') {
+          for (const item of inv.invoice_items || []) {
+            const pName = item.product_name || 'منتج غير معروف';
+            if (!productMap[pName]) {
+              productMap[pName] = {
+                product_name: pName,
+                total_quantity: 0,
+                total_spent: 0,
+                times_ordered: 0
+              };
+            }
+            productMap[pName].total_quantity += (item.quantity || 0);
+            productMap[pName].total_spent += (item.sub_total || 0);
+            productMap[pName].times_ordered += 1;
+          }
+        }
+      }
+
+      const topProducts = Object.values(productMap).sort((a, b) => b.times_ordered - a.times_ordered);
+
+      return {
+        success: true,
+        customer,
+        invoices: validInvoices,
+        totalSpent,
+        totalOrders,
+        avgOrderValue,
+        lastPurchaseDate,
+        daysSinceLastPurchase,
+        topProducts
+      };
+    } catch (err) {
+      console.error('Error in db:getCustomerProfile:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'فشل جلب ملف العميل الموحد',
+        totalSpent: 0,
+        totalOrders: 0,
+        avgOrderValue: 0,
+        invoices: [],
+        topProducts: []
+      };
+    }
+  });
+
   // ✅ جلب بيانات RFM للتحليل (SELECT من invoices مع invoice_items)
   ipcMain.handle('db:getRFMData', async (_, dateRange) => {
     try {

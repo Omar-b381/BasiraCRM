@@ -254,7 +254,7 @@ export default function ShippingExport() {
   //  Render
   // ─────────────────────────────────────────────────────────
   return (
-    <div className="p-6 min-h-screen text-slate-100 space-y-5" style={{ backgroundColor: '#0B0F1A' }} dir="rtl">
+    <div className="p-6 min-h-screen space-y-5" dir="rtl">
 
       {/* ═══ Header ═══ */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
@@ -492,7 +492,7 @@ export default function ShippingExport() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={{ minWidth: '1800px' }}>
               <thead>
-                <tr className="border-b border-slate-800" style={{ backgroundColor: '#0F1629' }}>
+                <tr className="border-b border-slate-800 bg-slate-850">
                   {[
                     '#', 'ثقة', 'Consignee Name', 'City', 'Area', 'Address',
                     'Phone_1', 'Phone_2', 'E-mail', 'Order ID', 'Client ID',

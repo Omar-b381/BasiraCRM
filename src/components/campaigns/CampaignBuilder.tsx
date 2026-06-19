@@ -293,7 +293,7 @@ export default function CampaignBuilder({
         </div>
 
         {/* Selected Segment Info Summary */}
-        <div className="bg-[#0b141a]/60 border border-white/5 rounded-3xl p-5 space-y-3 flex-1 dark-container">
+        <div className="glass border border-white/5 rounded-3xl p-5 space-y-3 flex-1">
           <h4 className="text-xs font-bold text-white border-b border-white/5 pb-2">تفاصيل الشريحة والعملاء</h4>
           
           <div className="flex justify-between items-center text-xs">
@@ -321,7 +321,7 @@ export default function CampaignBuilder({
               <p className="text-[10px] text-gray-400 font-bold mb-2">عينة من العملاء في هذه الشريحة ({targetedContacts.length}):</p>
               <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
                 {targetedContacts.slice(0, 5).map((contact, idx) => (
-                  <div key={contact.id || idx} className="flex justify-between items-center text-[10px] bg-white/5 p-2 rounded-xl border border-white/5">
+                  <div key={contact.id || idx} className="flex justify-between items-center text-[10px] bg-gray-850/50 p-2 rounded-xl border border-gray-800/40">
                     <span className="text-white font-bold">{contact.name}</span>
                     <span className="text-gray-400 font-semibold">{contact.phone}</span>
                   </div>
@@ -334,7 +334,7 @@ export default function CampaignBuilder({
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-orange-950/20 border border-orange-500/10 rounded-2xl text-[10px] text-orange-400 leading-relaxed font-semibold">
+            <div className="p-3 bg-orange-950 border border-orange-500/15 rounded-2xl text-[10px] text-orange-600 leading-relaxed font-semibold">
               ⚠️ لا يوجد أي عملاء مسجلين في هذه الشريحة حالياً. يرجى تحديث تحليل RFM أولاً.
             </div>
           )}

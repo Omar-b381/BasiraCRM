@@ -27,10 +27,22 @@ export interface IElectronAPI {
   db: {
     getContacts: (filters?: any) => Promise<any>;
     getContactById: (id: string) => Promise<any>;
+    getCustomerProfile: (id: string) => Promise<{
+      success: boolean;
+      customer?: any;
+      invoices: any[];
+      totalSpent: number;
+      totalOrders: number;
+      avgOrderValue: number;
+      lastPurchaseDate?: string;
+      daysSinceLastPurchase?: number;
+      topProducts: any[];
+      error?: string;
+    }>;
     getRFMData: (dateRange?: any) => Promise<any>;
     getProviders: () => Promise<any>;
     saveProvider: (provider: any) => Promise<any>;
-  };
+  },
   invoice: {
     searchCustomer: (query: string) => Promise<any>;
     create: (draft: any) => Promise<any>;
