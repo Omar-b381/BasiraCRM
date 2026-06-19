@@ -50,6 +50,13 @@ export interface IElectronAPI {
     updateStatuses: (updates: Array<{ invoiceId: number; status: string }>) => Promise<{ success: boolean; error?: string }>;
     getDbStats: () => Promise<{ success: boolean; stats?: any; error?: string }>;
   };
+  tasks: {
+    getTasks: () => Promise<{ success: boolean; data: any[]; error?: string }>;
+    createTask: (task: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+    updateTask: (task: any) => Promise<{ success: boolean; data?: any; error?: string }>;
+    deleteTask: (id: number) => Promise<{ success: boolean; error?: string }>;
+    onTaskReminder: (callback: (task: any) => void) => void;
+  };
 }
 
 declare global {

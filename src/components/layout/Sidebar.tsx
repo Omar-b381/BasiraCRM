@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck, ClipboardCheck, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, BarChart3, Settings, Bot, FileText, Truck, ClipboardCheck, ClipboardList, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import TasksBadge from '../tasks/TasksBadge';
 
 export default function Sidebar() {
   const { currentEmployee, logout } = useAuthStore();
@@ -14,6 +15,7 @@ export default function Sidebar() {
     { name: 'الفواتير والطباعة',    path: '/invoices',         icon: FileText, requiredPermission: 'edit_invoices' },
     { name: 'تصدير الشحن',          path: '/shipping-export',  icon: Truck, requiredPermission: 'edit_invoices' },
     { name: 'متابعة ومطابقة الشحنات', path: '/order-tracking',  icon: ClipboardCheck, requiredPermission: 'edit_invoices' },
+    { name: 'المهام والمتابعة',    path: '/tasks',            icon: ClipboardList, requiredPermission: 'manage_tasks' },
     { name: 'إعدادات النظام',       path: '/settings',         icon: Settings, requiredPermission: 'manage_settings' },
   ];
 
@@ -97,6 +99,9 @@ export default function Sidebar() {
             >
               <Icon className="w-5 h-5 shrink-0" style={{ color: 'inherit' }} />
               <span style={{ color: 'inherit' }}>{item.name}</span>
+              {item.path === '/tasks' && (
+                <TasksBadge className="mr-auto" />
+              )}
             </NavLink>
           );
         })}

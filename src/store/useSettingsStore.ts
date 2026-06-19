@@ -66,10 +66,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
               if (data.length === 0) {
                 // Table is empty, seed it with local employees or DEFAULT_EMPLOYEES
                 const localEmps = s.employees && s.employees.length > 0 ? s.employees : [
-                  { id: '1', name: 'عمر البشير', username: 'omar', password: '123', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices'] },
-                  { id: '2', name: 'أحمد محمود', username: 'ahmed', password: '123', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices'] },
-                  { id: '3', name: 'مريم علي', username: 'maryam', password: '123', role: 'agent', permissions: ['send_messages'] },
-                  { id: '4', name: 'خالد مصطفى', username: 'khaled', password: '123', role: 'agent', permissions: ['send_messages'] }
+                  { id: '1', name: 'عمر البشير', username: 'omar', password: '123', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices', 'manage_tasks'] },
+                  { id: '2', name: 'أحمد محمود', username: 'ahmed', password: '123', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices', 'manage_tasks'] },
+                  { id: '3', name: 'مريم علي', username: 'maryam', password: '123', role: 'agent', permissions: ['send_messages', 'manage_tasks'] },
+                  { id: '4', name: 'خالد مصطفى', username: 'khaled', password: '123', role: 'agent', permissions: ['send_messages', 'manage_tasks'] }
                 ];
                 
                 // تشفير كلمات المرور قبل رفعها للسحابة لأول مرة

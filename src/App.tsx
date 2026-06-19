@@ -11,8 +11,10 @@ import ShippingExport from './pages/ShippingExport';
 import OrderTracking from './pages/OrderTracking';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
+import Tasks from './pages/Tasks';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useAuthStore } from './store/useAuthStore';
+import { useTasksStore } from './store/useTasksStore';
 
 const IndexRedirect = () => {
   const { currentEmployee } = useAuthStore();
@@ -25,6 +27,9 @@ const IndexRedirect = () => {
   }
   if (currentEmployee.permissions?.includes('edit_invoices')) {
     return <InvoiceCreate />;
+  }
+  if (currentEmployee.permissions?.includes('manage_tasks')) {
+    return <Navigate to="/tasks" replace />;
   }
   return <div className="p-8 text-white font-bold text-center">عذراً، لا تمتلك صلاحيات كافية لتصفح النظام.</div>;
 };
@@ -49,6 +54,16 @@ export default function App() {
       window.electronAPI.auth.sessionLogout();
     }
   }, [isLoggedIn, currentEmployee]);
+
+  // الاشتراك في تذكيرات المهام وتحديث المتجر تلقائياً
+  useEffect(() => {
+    if (isLoggedIn && window.electronAPI.tasks) {
+      window.electronAPI.tasks.onTaskReminder((task: any) => {
+        // تحديث متجر المهام محلياً عند انطلاق التنبيه
+        useTasksStore.getState().fetchTasks();
+      });
+    }
+  }, [isLoggedIn]);
 
   if (initialLoading) {
     return (
@@ -89,6 +104,7 @@ export default function App() {
           {hasPermission('edit_invoices') && <Route path="invoices" element={<InvoiceCreate />} />}
           {hasPermission('edit_invoices') && <Route path="shipping-export" element={<ShippingExport />} />}
           {hasPermission('edit_invoices') && <Route path="order-tracking" element={<OrderTracking />} />}
+          {hasPermission('manage_tasks') && <Route path="tasks" element={<Tasks />} />}
           {hasPermission('manage_settings') && <Route path="settings" element={<Settings />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

@@ -74,4 +74,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDbStats: () =>
       ipcRenderer.invoke('shipping:getDbStats'),
   },
+
+  tasks: {
+    getTasks: () => ipcRenderer.invoke('tasks:get'),
+    createTask: (task: unknown) => ipcRenderer.invoke('tasks:create', task),
+    updateTask: (task: unknown) => ipcRenderer.invoke('tasks:update', task),
+    deleteTask: (id: number) => ipcRenderer.invoke('tasks:delete', id),
+    onTaskReminder: (callback: (task: any) => void) => {
+      ipcRenderer.removeAllListeners('tasks:reminder');
+      ipcRenderer.on('tasks:reminder', (_, task) => callback(task));
+    },
+  },
 });

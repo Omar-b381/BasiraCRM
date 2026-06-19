@@ -11,10 +11,10 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const DEFAULT_EMPLOYEES: Employee[] = [
-  { id: '1', name: 'عمر البشير', username: 'omar', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices'] },
-  { id: '2', name: 'أحمد محمود', username: 'ahmed', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices'] },
-  { id: '3', name: 'مريم علي', username: 'maryam', role: 'agent', permissions: ['send_messages'] },
-  { id: '4', name: 'خالد مصطفى', username: 'khaled', role: 'agent', permissions: ['send_messages'] }
+  { id: '1', name: 'عمر البشير', username: 'omar', role: 'admin', permissions: ['manage_settings', 'send_messages', 'view_reports', 'edit_invoices', 'manage_tasks'] },
+  { id: '2', name: 'أحمد محمود', username: 'ahmed', role: 'supervisor', permissions: ['send_messages', 'view_reports', 'edit_invoices', 'manage_tasks'] },
+  { id: '3', name: 'مريم علي', username: 'maryam', role: 'agent', permissions: ['send_messages', 'manage_tasks'] },
+  { id: '4', name: 'خالد مصطفى', username: 'khaled', role: 'agent', permissions: ['send_messages', 'manage_tasks'] }
 ];
 
 const DEFAULT_QUICK_REPLIES = [
@@ -669,7 +669,7 @@ export default function Settings() {
                           <div className="flex flex-wrap gap-1">
                             {emp.permissions.map((p, idx) => (
                               <span key={idx} className="bg-gray-800 text-gray-400 text-[9px] px-1.5 py-0.5 rounded">
-                                {p === 'manage_settings' ? 'إعدادات' : p === 'send_messages' ? 'مراسلة' : p === 'view_reports' ? 'تقارير' : 'فواتير'}
+                                {p === 'manage_settings' ? 'إعدادات' : p === 'send_messages' ? 'مراسلة' : p === 'view_reports' ? 'تقارير' : p === 'manage_tasks' ? 'مهام' : 'فواتير'}
                               </span>
                             ))}
                           </div>
@@ -754,6 +754,7 @@ export default function Settings() {
                     { key: 'send_messages', label: 'إرسال الرسائل ومتابعة الشات' },
                     { key: 'edit_invoices', label: 'تعديل وإنشاء الفواتير' },
                     { key: 'view_reports', label: 'عرض التقارير والتحليلات السلوكية RFM' },
+                    { key: 'manage_tasks', label: 'إدارة المهام والتذكيرات والمتابعات السحابية' },
                     { key: 'manage_settings', label: 'إدارة إعدادات النظام وقنوات الـ API' }
                   ].map((p) => {
                     const hasPerm = newEmpPerms.includes(p.key);
